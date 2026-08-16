@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>축전기 서비스 센터 — 축전기의 원리와 활용</title>
+<link rel="stylesheet" href="common/lab.css">
+</head>
+<body>
+<script src="https://cdn.babylonjs.com/babylon.js"></script>
+<script src="assets/thumbs-data.js"></script>
+<script src="common/lab-icons.js"></script>
+<script src="common/lab-shell.js"></script>
+<script src="js/content.js"></script>
+<script src="js/scene-circuit.js"></script>
+<script src="js/scene-struct.js"></script>
+<script src="js/scene-devices.js"></script>
+<script>
+  Lab.boot({
+    unit: '물리학 · Ⅱ. 전기와 자기 › 03. 축전기와 센서',
+    title: '축전기 서비스 센터 — 분해하고 조립하며 배우는 축전기',
+    experiments: [CircuitScene, StructScene, DeviceScene],
+    content: LabContent,
+  });
+</script>
+</body>
+</html>
