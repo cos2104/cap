@@ -344,19 +344,33 @@ const CircuitScene = (() => {
     capLblTex.update();
   }
 
-  /** 판 위 전하 기호 — 개수가 전압에 비례 (9V 에서 24개) */
+  /** 같은 부호 전하는 서로 밀어내므로 판 «전체에 고르게» 퍼져 거리를 유지한다.
+      전하가 늘면 전체가 재배치되며 간격이 좁아진다. */
+  function drawChargesEven(c, W2, H2, n, sign) {
+    if (n <= 0) return;
+    const cols = Math.max(1, Math.round(Math.sqrt(n * W2 / H2)));
+    const rows = Math.ceil(n / cols);
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillStyle = sign > 0 ? '#d0453a' : '#2f6ad0';
+    let i = 0;
+    for (let r = 0; r < rows && i < n; r++) {
+      const inRow = Math.min(cols, n - r * cols);
+      for (let k = 0; k < inRow; k++, i++) {
+        const x = W2 * (k + 1) / (inRow + 1);
+        const y = H2 * (r + 1) / (rows + 1);
+        c.fillText(sign > 0 ? '+' : '−', x, y);
+      }
+    }
+  }
+
+  /** 판 위 전하 기호 — 개수가 Q = CV 에 비례 */
   function drawPlateCharges() {
     const n = chargeCount();
     const draw = (tex, sign) => {
       const c = tex.getContext();
       c.clearRect(0, 0, 220, 190);
       c.font = 'bold 26px sans-serif';
-      c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = sign > 0 ? '#d0453a' : '#2f6ad0';
-      for (let i = 0; i < n; i++) {
-        const col = i % 6, row = Math.floor(i / 6);
-        c.fillText(sign > 0 ? '+' : '−', 22 + col * 36, 30 + row * 44);
-      }
+      drawChargesEven(c, 220, 190, n, sign);
       tex.update();
     };
     draw(plateTexA, +1);

@@ -825,24 +825,68 @@ const DeviceScene = (() => {
     wire3([[-0.9, 0.45, 0.6], [-0.9, 0.4, 0.9], [2.3, 0.4, 0.9], [2.3, 0.55, 0.75]], humidG, 'hmW1', '#c0392b');
     wire3([[0.9, 0.45, 0.5], [2.0, 0.5, 0.6]], humidG, 'hmW2', '#3c4756');
     wire3([[2.7, 0.55, 0.6], [3.4, 0.9, 0.3], [3.6, 1.3, 0]], humidG, 'hmW3', '#3c4756');
-    // 물 분자 — 공기 중 18개 · 흡습층 안 18개, 습도에 «같은 비율»로 늘어난다
+    // 물 분자 — «극성 분자» 모형: 산소(붉은 큰 구, δ−) + 수소(흰 작은 구 2개, δ+)
+    // 공기 중에서는 방향이 제멋대로, 흡습층 안(전기장 속)에서는 «정렬»된다 — 유전 분극
+    const oMat = emat('hmMolO', '#d04838', 0.95);
+    const hMat = emat('hmMolH', '#f0f0f0', 0.95);
+    const mkMol = (nm, aligned) => {
+      const g = new (B().TransformNode)(nm, scene);
+      const o = B().MeshBuilder.CreateSphere(nm + 'o', { diameter: 0.17 }, scene);
+      o.position.set(-0.055, 0, 0);
+      o.material = oMat;
+      o.isPickable = false;
+      o.parent = g;
+      [[0.075, 0.065], [0.075, -0.065]].forEach(([dx, dy], k) => {
+        const h = B().MeshBuilder.CreateSphere(nm + 'h' + k, { diameter: 0.095 }, scene);
+        h.position.set(dx, dy, 0);
+        h.material = hMat;
+        h.isPickable = false;
+        h.parent = g;
+      });
+      if (aligned) {
+        // 전기장 방향으로 정렬: 산소(−)가 + 전극(왼쪽)을, 수소(+)가 − 전극(오른쪽)을 향한다
+        g.rotation.set(0, 0, (Math.random() - 0.5) * 0.2);
+      } else {
+        g.rotation.set(Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28);
+      }
+      g.parent = humidG;
+      return g;
+    };
     for (let i = 0; i < 18; i++) {
-      const w = B().MeshBuilder.CreateSphere('hmMolL' + i, { diameter: 0.14 }, scene);
-      w.position.set((Math.random() * 2 - 1) * 0.6, 0.6 + Math.random() * 1.9, (Math.random() * 2 - 1) * 0.7);
-      w.material = emat('hmMolLM' + i, '#3ca0e0', 0.9);
-      w.parent = humidG;
-      humidMolsLayer.push(w);
+      const g = mkMol('hmMolL' + i, true);
+      g.position.set((Math.random() * 2 - 1) * 0.55, 0.6 + Math.random() * 1.9, (Math.random() * 2 - 1) * 0.65);
+      humidMolsLayer.push(g);
     }
     for (let i = 0; i < 18; i++) {
-      const w = B().MeshBuilder.CreateSphere('hmMolA' + i, { diameter: 0.14 }, scene);
-      // 공기 중 — 흡습층 밖 사방에
+      const g = mkMol('hmMolA' + i, false);
       const ang = Math.random() * Math.PI * 2;
       const rad = 1.6 + Math.random() * 2.2;
-      w.position.set(Math.cos(ang) * rad, 0.7 + Math.random() * 3.0, Math.sin(ang) * rad * 0.6);
-      w.material = emat('hmMolAM' + i, '#3ca0e0', 0.7);
-      w.parent = humidG;
-      humidMolsAir.push(w);
+      g.position.set(Math.cos(ang) * rad, 0.7 + Math.random() * 3.0, Math.sin(ang) * rad * 0.6);
+      humidMolsAir.push(g);
     }
+    // 전극 안쪽 면의 충전 전하 — 물 분자(분극)가 늘수록 함께 늘어난다
+    const mkFace = (nm, x, ry) => {
+      const f = B().MeshBuilder.CreatePlane(nm, { width: 1.7, height: 2.1 }, scene);
+      f.position.set(x, 1.5, 0);
+      f.rotation.y = ry;
+      const t = new (B().DynamicTexture)(nm + 'T', { width: 170, height: 210 }, scene, true);
+      t.hasAlpha = true;
+      const m = new (B().StandardMaterial)(nm + 'M', scene);
+      m.diffuseTexture = t; m.opacityTexture = t; m.emissiveTexture = t;
+      m.emissiveColor = new (B().Color3)(1, 1, 1);
+      m.backFaceCulling = false;
+      f.material = m;
+      f.isPickable = false;
+      f.parent = humidG;
+      return t;
+    };
+    humidG._chgTexP = mkFace('hmChgP', -0.8, Math.PI / 2);   // 왼쪽 전극 안쪽 (+)
+    humidG._chgTexN = mkFace('hmChgN', 0.8, -Math.PI / 2);   // 오른쪽 전극 안쪽 (−)
+    const dl2 = label('hmPolarL',
+      '물 분자는 극성 분자 — 붉은 쪽(산소)이 −, 흰 쪽(수소)이 +.\n전기장 속에서 정렬(유전 분극)되어 판의 전하를 붙잡아 준다',
+      6.6, 0.72, 22, '#8a4a20');
+    dl2.position.set(0, -0.75, 0);
+    dl2.parent = humidG;
     const tl = label('hmTitle', '전기 용량식 습도 센서 (단면 모형)', 4.8, 0.5, 30);
     tl.position.set(0.4, 4.2, 0);
     tl.parent = humidG;
@@ -877,6 +921,27 @@ const DeviceScene = (() => {
     humidMolsLayer.forEach((m, i) => m.setEnabled(i < n));
     humidMolsAir.forEach((m, i) => m.setEnabled(i < n));
     humidLayer.material.alpha = 0.2 + frac * 0.35;
+    // 전극에 충전된 전하 — 분극된 물 분자가 늘수록 함께 늘어난다 (고른 분포)
+    const nq = Math.round(humidCharge() / 140 * 12);
+    const drawQ = (tex, sign) => {
+      const c = tex.getContext();
+      c.clearRect(0, 0, 170, 210);
+      c.font = 'bold 30px sans-serif';
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillStyle = sign > 0 ? '#d0453a' : '#2f6ad0';
+      const cols = Math.max(1, Math.round(Math.sqrt(nq * 170 / 210)));
+      const rows = Math.ceil(nq / cols);
+      let i = 0;
+      for (let r = 0; r < rows && i < nq; r++) {
+        const inRow = Math.min(cols, nq - r * cols);
+        for (let k = 0; k < inRow; k++, i++) {
+          c.fillText(sign > 0 ? '+' : '−', 170 * (k + 1) / (inRow + 1), 210 * (r + 1) / (rows + 1));
+        }
+      }
+      tex.update();
+    };
+    drawQ(humidG._chgTexP, +1);
+    drawQ(humidG._chgTexN, -1);
     drawHumidDisp();
   }
 
@@ -1308,9 +1373,10 @@ const DeviceScene = (() => {
         <div class="row"><span>공기 중 습도</span><b>${state.humid.toFixed(0)} %</b></div>
         <div class="row"><span>충전된 전하량 (상대값)</span><b class="big">${humidCharge()}</b></div>
         <div class="row"><span>표시 습도</span><b>${state.humid.toFixed(0)} %</b></div>
-        <div class="formula">공기 중 수증기가 많아지면 흡습층이 머금는 수분도 <b>같은 비율로</b> 늘어나
-          평형을 이룹니다. 그만큼 <b>충전되는 전하의 양이 변하고</b>, 측정 회로가 이를 전기 신호로
-          바꾸어 습도를 표시합니다 (84쪽).</div>`;
+        <div class="formula">원리 3단계 — ① 공기 중 수증기와 흡습층의 수분이 <b>평형</b>을 이룬다(습도↑ → 흡수↑).
+          ② 물 분자는 <b>극성 분자</b>라 전기장 속에서 정렬(<b>유전 분극</b>, 앞 단원 Ⅱ-1-02)되어 판의
+          전하를 끌어 붙잡아 준다. ③ 그래서 같은 전압에서 <b>충전되는 전하의 양이 늘고</b>, 측정 회로가
+          이 변화를 습도로 환산해 표시한다 (84쪽). 습도를 바꿔 전극의 전하가 느는 것을 보세요.</div>`;
     }
     const score = sortScore();
     const wrong = Object.keys(ANSWER).filter((k) => state.sorted[k] && state.sorted[k] !== ANSWER[k]);
@@ -1402,7 +1468,10 @@ const DeviceScene = (() => {
     if (state.mode === 'aed' || state.mode === 'flash') {
       return '충전·방전 이용 — 전원의 에너지를 축전기에 모아 두었다가 필요한 순간 한 번에 방출한다';
     }
-    if (state.mode === 'touch' || state.mode === 'humid') {
+    if (state.mode === 'humid') {
+      return '수분 평형 → 극성 물 분자의 정렬(유전 분극) → 판의 전하 증가 → 습도 환산';
+    }
+    if (state.mode === 'touch') {
       return '전하량 변화 이용 — 환경의 변화가 충전되는 전하의 양을 바꾸고, 회로가 이를 신호로 바꾼다';
     }
     return '두 원리를 구분했다면 84쪽 해 보기 표를 완성할 수 있습니다';

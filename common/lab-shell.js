@@ -555,16 +555,24 @@ const LabUI = {
     m.backFaceCulling = false;
     p.material = m;
     p.parent = g;
-    // 명패
-    const tag = BABYLON.MeshBuilder.CreatePlane('posterTag', { width: 1.8, height: 0.42 }, scene);
+    // 명패 — 라벨 길이에 맞춰 폭과 글자 크기를 자동 조절 (긴 라벨이 잘리지 않게)
+    const labelText = opt.label || '교과서 그림';
+    const tagW = Math.min(W + 0.24, Math.max(1.8, labelText.length * 0.17 + 0.7));
+    const tag = BABYLON.MeshBuilder.CreatePlane('posterTag', { width: tagW, height: 0.42 }, scene);
     tag.position.set(0, 0.28, 0);
-    const tex = new BABYLON.DynamicTexture('posterTagTex', { width: 300, height: 70 }, scene, true);
+    const TXW = Math.round(tagW * 167);
+    const tex = new BABYLON.DynamicTexture('posterTagTex', { width: TXW, height: 70 }, scene, true);
     const c = tex.getContext();
-    c.fillStyle = '#f6f2e6'; c.fillRect(0, 0, 300, 70);
+    c.fillStyle = '#f6f2e6'; c.fillRect(0, 0, TXW, 70);
     c.fillStyle = '#5a4632';
-    c.font = 'bold 34px "Noto Sans KR", sans-serif';
+    let px = 34;
+    c.font = `bold ${px}px "Noto Sans KR", sans-serif`;
+    while (px > 16 && c.measureText(labelText).width > TXW - 24) {
+      px -= 2;
+      c.font = `bold ${px}px "Noto Sans KR", sans-serif`;
+    }
     c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(opt.label || '교과서 그림', 150, 38);
+    c.fillText(labelText, TXW / 2, 38);
     tex.update();
     const tm = new BABYLON.StandardMaterial('posterTagM', scene);
     tm.diffuseTexture = tex; tm.emissiveTexture = tex;

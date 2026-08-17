@@ -146,6 +146,7 @@ const StructScene = (() => {
     cc.fillStyle = '#20315e'; cc.font = 'bold 60px sans-serif';
     cc.fillText('−', 88, 148);
     ct.update();
+    ct.uScale = -1;   // 원통 옆면에서 글씨가 거울처럼 뒤집혀 보이는 것을 교정
     casingMat.diffuseTexture = ct;
     // DynamicTexture 를 diffuse 로만 쓰면 첫 렌더에서 보이지 않는 경우가 있어 emissive 를 함께 준다
     casingMat.emissiveTexture = ct;
@@ -494,7 +495,8 @@ const StructScene = (() => {
       a._mats.forEach((m2) => { m2.alpha = Math.min(1, 0.35 + pull * 0.3); });
       a.setEnabled(flatOn && rp < 0.5);
     });
-    // 전하 기호 — 상대값에 비례 (최대 24개)
+    // 전하 기호 — 상대값에 비례 (최대 24개). 같은 부호 전하는 서로 밀어내므로
+    // 판 «전체에 고르게» 퍼져 거리를 유지하고, 수가 변하면 전체가 재배치된다.
     const n = Math.max(2, Math.min(24, Math.round(chargeRel() / 400 * 24)));
     const draw = (tex, sign) => {
       const c = tex.getContext();
@@ -502,9 +504,14 @@ const StructScene = (() => {
       c.font = 'bold 32px sans-serif';
       c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillStyle = sign > 0 ? '#d0453a' : '#2f6ad0';
-      for (let i = 0; i < n; i++) {
-        const col = i % 5, row = Math.floor(i / 5);
-        c.fillText(sign > 0 ? '+' : '−', 30 + col * 47, 30 + row * 47);
+      const cols = Math.max(1, Math.round(Math.sqrt(n)));
+      const rows = Math.ceil(n / cols);
+      let i = 0;
+      for (let r = 0; r < rows && i < n; r++) {
+        const inRow = Math.min(cols, n - r * cols);
+        for (let k = 0; k < inRow; k++, i++) {
+          c.fillText(sign > 0 ? '+' : '−', 250 * (k + 1) / (inRow + 1), 250 * (r + 1) / (rows + 1));
+        }
       }
       tex.update();
     };
