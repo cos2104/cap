@@ -133,7 +133,7 @@ const LabFlow = (() => {
           const dd = $('#fnDd' + el.dataset.fn);
           const wasOpen = dd.classList.contains('open');
           $$('.fn-dd').forEach((d) => d.classList.remove('open'));
-          if (!wasOpen) dd.classList.add('open');
+          if (!wasOpen) { dd.classList.add('open'); placeDd(dd, el); }
           e.stopPropagation();
           return;
         }
@@ -151,6 +151,15 @@ const LabFlow = (() => {
     });
   }
   document.addEventListener('click', () => $$('.fn-dd').forEach((d) => d.classList.remove('open')));
+
+  // 드롭다운(position:fixed)을 누른 메뉴 아래, 화면 밖으로 나가지 않는 위치에 놓는다
+  function placeDd(dd, btn) {
+    const r = btn.getBoundingClientRect();
+    const w = Math.min(320, window.innerWidth - 16);
+    dd.style.minWidth = w + 'px';
+    dd.style.top = r.bottom + 'px';
+    dd.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+  }
 
   /* ── 모달 ──────────────────────────────────────────── */
   function openView(id) {

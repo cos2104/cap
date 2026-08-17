@@ -132,6 +132,11 @@ const Lab = (() => {
     GH = $('#graphCanvas').height;
 
     bindShell();
+    // 좁은 화면에서는 무대를 가리지 않게 부가 패널을 접힌 상태로 시작
+    if (matchMedia('(max-width: 820px)').matches) {
+      [['graphPanel', 'graphToggle'], ['recordPanel', 'recToggle'], ['stepsPanel', 'stepToggle']]
+        .forEach(([p, t]) => { $('#' + p).classList.add('collapsed'); $('#' + t).textContent = '＋'; });
+    }
     openExperiment(cfg.experiments[0].id);
 
     engine.runRenderLoop(() => {

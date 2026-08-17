@@ -37,7 +37,8 @@
   background: #2f9e6b; color: #fff; font-size: 10px; text-align: center; font-weight: 800;
 }
 .fn-dd {
-  position: absolute; top: 42px; left: auto;
+  /* 흐름 바(overflow 스크롤 컨테이너)에 잘리지 않도록 뷰포트 기준으로 띄운다 — 좌표는 JS가 지정 */
+  position: fixed; top: auto; left: auto;
   background: #fff; border: 1px solid var(--line); border-top: 0;
   min-width: 320px; box-shadow: 0 8px 18px rgb(20 50 90 / 18%);
   z-index: 80; display: none;
@@ -58,6 +59,17 @@
   display: grid; place-items: center; flex: none;
 }
 #flowModal .modal-box { width: min(760px, 94vw); }
+
+@media (max-width: 820px) {
+  .lab-screen {
+    grid-template-areas: "top" "flow" "stage" "side" "ctrl";
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 38px 1fr auto auto;
+  }
+  .fn-item { padding: 0 12px; font-size: 12px; }
+  .fn-dd { min-width: 0; }
+  .fn-dd-item { padding: 10px 12px; font-size: 12.5px; }
+}
 </style>
 </head>
 <body>
