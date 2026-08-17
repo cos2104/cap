@@ -29,6 +29,8 @@ const Lab = (() => {
   let gctx, GW, GH;
   let records = [];
   let stepIdx = 0;
+  let stepHold = false;      // [이전]으로 되돌아가 보는 동안에는 자동 진행을 멈춘다
+  let stepPollT = 0;
 
   /* ══ 화면 뼈대 ═══════════════════════════════ */
   function markup(c) {
@@ -78,7 +80,7 @@ const Lab = (() => {
 
         <section class="steps-panel hidden" id="stepsPanel">
           <div class="steps-head">
-            <span>탐구 수행 <small>(교과서 순서)</small></span>
+            <span>탐구 수행</span>
             <span class="btns">
               <span id="stepNo">1 / 1</span>
               <button id="stepPrev">이전</button>
@@ -152,6 +154,18 @@ const Lab = (() => {
         const dt = Math.min(engine.getDeltaTime() / 1000, 0.05);
         if (current.tick(dt)) refreshLive();
       }
+      // 실험이 진행되면 탐구 수행 단계가 저절로 넘어간다 (0.5초 간격 확인)
+      if (phase === 'run' && current.stepDone && !stepHold) {
+        stepPollT += engine.getDeltaTime();
+        if (stepPollT > 500) {
+          stepPollT = 0;
+          const steps = expSteps();
+          if (steps && stepIdx < steps.length - 1 && current.stepDone(stepIdx)) {
+            stepIdx += 1;
+            renderSteps();
+          }
+        }
+      }
       current.scene.render();
     });
     window.addEventListener('resize', () => engine.resize());
@@ -170,6 +184,7 @@ const Lab = (() => {
     renderRecords();
     $('#recordPanel').classList.toggle('hidden', !current.recordColumns);
     stepIdx = 0;
+    stepHold = false;
 
     current.resetTools();
     current.resetCamera();
@@ -282,7 +297,7 @@ const Lab = (() => {
       const r = canvas.getBoundingClientRect();
       const cx = e.clientX - r.left, cy = e.clientY - r.top;
       const inside = cx >= 0 && cy >= 0 && cx <= r.width && cy <= r.height;
-      current.dragPreview(dragging, inside ? pickPoint(cx, cy) : null);
+      current.dragPreview(dragging, inside ? pickPoint(cx, cy, true) : null);
       return;
     }
     const r = $('#stage').getBoundingClientRect();
@@ -303,7 +318,7 @@ const Lab = (() => {
     dragging = null;
     if (current.dragPreview) current.dragPreview(id, null);
 
-    // 거의 움직이지 않았으면 «클릭» — 부품이 제자리로 들어간다
+    // 거의 움직이지 않았으면 클릭 — 부품이 제자리로 들어간다
     if (!dragMoved && current.clickPlace) {
       current.placeTool(id);
       markPlaced(id);
@@ -316,7 +331,7 @@ const Lab = (() => {
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
     if (cx < 0 || cy < 0 || cx > r.width || cy > r.height) return;
 
-    const point = pickPoint(cx, cy);
+    const point = pickPoint(cx, cy, !!current.dragPreview);
     if (!point) { showHint('실험대 위에 놓아 주세요.'); return; }
 
     if (current.dropAt(id, point) === 'ok') {
@@ -330,11 +345,14 @@ const Lab = (() => {
   }
 
   /** 화면 좌표 → 3D 좌표. 아무것도 안 맞으면 수평면과의 교점을 쓴다. */
-  function pickPoint(cx, cy) {
+  function pickPoint(cx, cy, planeOnly) {
     const scene = current.scene;
-    const pick = scene.pick(cx, cy, (m) => m.isPickable !== false && m.isEnabled());
-    if (pick && pick.hit && pick.pickedPoint) return pick.pickedPoint;
-
+    // 3D 부품 미리보기(dragPreview) 중에는 커서를 따라오는 부품 자신이나 높이가 다른
+    // 바닥들이 픽되어 좌표가 튀므로, 항상 y=0 평면과의 교점만 쓴다.
+    if (!planeOnly) {
+      const pick = scene.pick(cx, cy, (m) => m.isPickable !== false && m.isEnabled());
+      if (pick && pick.hit && pick.pickedPoint) return pick.pickedPoint;
+    }
     const ray = scene.createPickingRay(cx, cy, BABYLON.Matrix.Identity(), scene.activeCamera);
     const plane = BABYLON.Plane.FromPositionAndNormal(
       BABYLON.Vector3.Zero(), new BABYLON.Vector3(0, 1, 0));
@@ -368,7 +386,7 @@ const Lab = (() => {
     const body = $('#recordBody');
     if (!current || !current.recordColumns) return;
     if (!records.length) {
-      body.innerHTML = `<div class="empty">조건을 바꿔 가며 «기록» 을 눌러 결과를 모아 보세요.</div>`;
+      body.innerHTML = `<div class="empty">조건을 바꿔 가며 [기록]을 눌러 결과를 모아 보세요.</div>`;
       return;
     }
     body.innerHTML = `<table>
@@ -480,10 +498,12 @@ const Lab = (() => {
     $('#recAdd').addEventListener('click', addRecord);
     $('#recClear').addEventListener('click', () => { records = []; renderRecords(); });
 
-    // 탐구 수행 단계 이동
-    $('#stepPrev').addEventListener('click', () => { stepIdx -= 1; renderSteps(); });
+    // 탐구 수행 단계 이동 — [이전]으로 돌아가면 자동 진행을 잠시 멈추고,
+    // [다음]으로 앞으로 나가면 자동 진행을 다시 켠다
+    $('#stepPrev').addEventListener('click', () => { stepIdx -= 1; stepHold = true; renderSteps(); });
     $('#stepNext').addEventListener('click', () => {
       const steps = expSteps();
+      stepHold = false;
       if (steps && stepIdx < steps.length - 1) { stepIdx += 1; renderSteps(); }
       else {
         showHint('탐구 수행을 모두 마쳤습니다. 기록표를 정리해 보세요!', true);

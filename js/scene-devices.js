@@ -7,9 +7,9 @@
  *   카메라 플래시 — AA 전지 → 승압 회로 → 축전기 → 트리거 회로 → 크세논 방전관(+반사판)
  *     · 셔터를 누르면 방전관이 터지는 섬광
  *   터치스크린 — 접촉 지점만 잠깐 전하가 빠져나갔다가 구동 회로가 다시 채운다 (리플 모션)
- *   습도 센서 — 공기 중 수증기와 흡습층의 수분이 «평형»을 이룬다 (같은 비율로 표시)
- *   분류 게임 — 실물 미니어처를 «끌어서» 두 선반에 옮긴다
- * (교육과정 지침에 따라 '전기 용량' 용어 대신 «충전된 전하의 양»으로 서술)
+ *   습도 센서 — 공기 중 수증기와 흡습층의 수분이 평형을 이룬다 (같은 비율로 표시)
+ *   분류 게임 — 실물 미니어처를 끌어서 두 선반에 옮긴다
+ * (교육과정 지침에 따라 '전기 용량' 용어 대신 충전된 전하의 양으로 서술)
  */
 const DeviceScene = (() => {
   const B = () => BABYLON;
@@ -41,6 +41,7 @@ const DeviceScene = (() => {
     explode: false,      // 터치스크린 층 벌려 보기
     humid: 45,
     sorted: { aed: 0, flash: 0, touch: 0, humid: 0 },
+    repaired: { aed: false, flash: false, touch: false, humid: false },
   };
   const ANSWER = { aed: 'cd', flash: 'cd', touch: 'qc', humid: 'qc' };
   const DEV_NAME = {
@@ -50,7 +51,8 @@ const DeviceScene = (() => {
 
   const tools = [{ id: 'bench', label: '기기 점검대', icon: 'voltmeter' }];
 
-  const humidCharge = () => Math.round(60 + (state.humid - 20) / 70 * 80);
+  const humidCharge = () => state.repaired.humid
+    ? Math.round(60 + (state.humid - 20) / 70 * 80) : 40;
   const sortScore = () => Object.keys(ANSWER).filter((k) => state.sorted[k] === ANSWER[k]).length;
 
   /* ══ 장면 ═══════════════════════════════════ */
@@ -89,6 +91,7 @@ const DeviceScene = (() => {
     buildTouch();
     buildHumid();
     buildSort();
+    buildRepairs();
     bindPointer(canvas);
 
     // 교과서 그림 4장 — 기기별로 맞춰서, 시뮬레이션 쪽을 바라보도록 안쪽으로 기울인다
@@ -263,7 +266,7 @@ const DeviceScene = (() => {
 
   /* ── 자동 심장 충격기 ──
      배터리 → 변환 회로 → 축전기(+단자) … (−단자) → 배터리 로 닫힌 충전 회로,
-     축전기(+) → 방전 스위치 → 패드 → «심장» → 패드 → 축전기(−) 로 닫힌 방전 회로 */
+     축전기(+) → 방전 스위치 → 패드 → 심장 → 패드 → 축전기(−) 로 닫힌 방전 회로 */
   let AED_CHG, AED_DIS;
 
   function buildAED() {
@@ -307,7 +310,7 @@ const DeviceScene = (() => {
     scr.material = sm2;
     scr.parent = aedG;
     body.isPickable = false;
-    // 전면 아래쪽 빈 공간에 «큰» 버튼 두 개 — 실제 AED 처럼
+    // 전면 아래쪽 빈 공간에 큰 버튼 두 개 — 실제 AED 처럼
     // ⏻ 전원 버튼 (초록) — 켜면 충전이 시작된다
     const pwr = B().MeshBuilder.CreateCylinder('aedBtnPwr', { height: 0.12, diameter: 0.62 }, scene);
     pwr.rotation.x = Math.PI / 2;
@@ -499,7 +502,7 @@ const DeviceScene = (() => {
     flashTube.position.set(1.0, 2.05, -0.72);
     flashTube.material = emat('flTubeM', '#5a6a78', 0.9);
     flashTube.parent = flashG;
-    const tl2 = label('flTubeL', '크세논 방전관 + 반사판\n전류가 흐르는 «순간» 밝은 빛을 낸다', 4.2, 0.66, 22, '#3c5568');
+    const tl2 = label('flTubeL', '크세논 방전관 + 반사판\n전류가 흐르는 순간 밝은 빛을 낸다', 4.2, 0.66, 22, '#3c5568');
     tl2.position.set(1.1, 2.95, -0.6);
     tl2.parent = flashG;
     flashWin = B().MeshBuilder.CreatePlane('flWin', { width: 1.2, height: 0.62 }, scene);
@@ -524,21 +527,23 @@ const DeviceScene = (() => {
     const btnHint = label('flBtnHint', '초록=충전 · 빨강=셔터\n버튼을 직접 클릭!', 2.4, 0.62, 22, '#b05820');
     btnHint.position.set(2.15, 3.1, 0.35);
     btnHint.parent = flashG;
-    // 충전 폐회로: 전지+ → 승압 → 축전기(+) / (−) → 전지−
+    // 충전 폐회로: 전지+ → (승압 회로 속을 지나) → 축전기(+) / (−) → 전지−
     FL_CHG = [
-      [-1.42, 1.25, 0.48], [-1.42, 1.62, 0.3], [-0.6, 1.62, 0.3], [-0.25, 1.3, 0.3],
-      [0.2, 1.3, 0.4], leads.posP,
-      leads.posN, [0.55, 0.28, 0.35], [-0.88, 0.28, 0.1], [-0.88, 1.2, 0.06],
+      [-1.42, 1.25, 0.48], [-1.42, 1.62, 0.3], [-0.85, 1.62, 0.3],
+      [-0.68, 1.1, 0.3], [-0.68, 0.7, 0.3],
+      [0.08, 0.7, 0.35],
+      [0.5, 1.1, 0.45], leads.posP,
+      leads.posN, [1.35, 1.41, 0.5], [1.35, 0.16, 0.35], [-0.88, 0.16, 0.1], [-0.88, 1.2, 0.06],
     ];
-    wire3(FL_CHG.slice(0, 6), flashG, 'flWc', '#c0392b');
-    wire3(FL_CHG.slice(6), flashG, 'flWr', '#3c4756');
-    // 방전 폐회로: 축전기(+) → 트리거 → 방전관 왼쪽 / 오른쪽 → 축전기(−)
+    wire3(FL_CHG.slice(0, 8), flashG, 'flWc', '#c0392b');
+    wire3(FL_CHG.slice(8), flashG, 'flWr', '#3c4756');
+    // 방전 폐회로: 축전기(+) → 셔터 스위치 → 방전관 왼쪽 / 오른쪽 → 축전기(−)
     FL_DIS = [
       leads.posP, [0.5, 2.15, 0.05], [0.15, 2.15, 0.05],
       [0.55, 2.05, -0.72],
       [1.45, 2.05, -0.72], [1.5, 1.4, 0.1], leads.posN,
     ];
-    wire3(FL_DIS.slice(1, 4), flashG, 'flWd1', '#c0392b');
+    wire3(FL_DIS.slice(0, 4), flashG, 'flWd1', '#c0392b');
     wire3(FL_DIS.slice(4), flashG, 'flWd2', '#3c4756');
     mkDots('flash', 6, flashG);
     const tl3 = label('flTitle', '카메라 플래시 — 내부가 보이는 모형', 4.4, 0.5, 30);
@@ -557,7 +562,7 @@ const DeviceScene = (() => {
   /* ── 터치스크린 ────────────────────────────── */
   function buildTouch() {
     touchG = new (B().TransformNode)('dvTouch', scene);
-    // 층 4겹 — 테두리 색으로 구별, «층 벌려 보기»로 하나씩 확인 가능
+    // 층 4겹 — 테두리 색으로 구별, 층 벌려 보기로 하나씩 확인 가능
     const layers = [
       ['유리', '#bcd8e8', 0.55, -0.30, '#2f7fd6'],
       ['투명 전극', '#7fc8a8', 0.5, -0.18, '#1d8a5c'],
@@ -607,7 +612,7 @@ const DeviceScene = (() => {
     drawTouchTex();
   }
 
-  /** 다이얼(전화 번호판) 화면 — 터치하면 그 숫자가 «인식»되어 위 표시줄에 찍힌다.
+  /** 다이얼(전화 번호판) 화면 — 터치하면 그 숫자가 인식되어 위 표시줄에 찍힌다.
       빠져나간 전하는 잠시 뒤 복원되고, 터치 지점에는 리플이 번진다. */
   const DIAL = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['*', '0', '#']];
   const DIAL_X = [220, 360, 500];
@@ -634,7 +639,7 @@ const DeviceScene = (() => {
         const left = state.removed[col + ',' + r];
         const cx2 = col * cw + cw / 2, cy2 = r * ch + ch / 2;
         if (left > 0) {
-          // 전하가 빠져나간 «빈 자리» — 주황 점선 링으로 또렷하게
+          // 전하가 빠져나간 빈 자리 — 주황 점선 링으로 또렷하게
           const back = 1 - left / RESTORE_T;
           c.strokeStyle = `rgba(255,150,60,${0.9 - back * 0.6})`;
           c.lineWidth = 3;
@@ -707,7 +712,7 @@ const DeviceScene = (() => {
     c.textAlign = 'left'; c.textBaseline = 'bottom';
     if (state.touched && state.touchedT > 0) {
       c.fillStyle = '#ffd84a'; c.font = 'bold 19px "Noto Sans KR", sans-serif';
-      c.fillText(`전하량 변화 감지 → ${state.touched[2] ? `«${state.touched[2]}» 입력!` : '위치 인식!'} (곧 다시 채워집니다)`, 12, 398);
+      c.fillText(`전하량 변화 감지 → ${state.touched[2] ? `${state.touched[2]} 입력!` : '위치 인식!'} (곧 다시 채워집니다)`, 12, 398);
     } else if (state.noSense) {
       c.fillStyle = '#f08a80'; c.font = 'bold 19px "Noto Sans KR", sans-serif';
       c.fillText('반응 없음 — 부도체는 전하를 데려가지 못해요', 12, 398);
@@ -715,18 +720,210 @@ const DeviceScene = (() => {
     touchTex.update();
   }
 
+  /* ── 수리 의뢰(스토리) — 기기마다 고장 원인을 찾아 알맞은 부품으로 고쳐야 작동한다 ── */
+  let repairBuilt = false;
+  const REPAIR = {
+    aed: {
+      title: '의뢰 ①  "심장 충격기가 충전되지 않아요"',
+      prompt: '빈 자리에 알맞은 부품을 골라 끼우세요 (클릭)',
+      parts: [['res', '저항'], ['coil', '코일'], ['cap', '축전기']],
+      answer: 'cap',
+      wrong: {
+        res: '저항은 전류를 줄일 뿐, 에너지를 모아 두지 못해요.',
+        coil: '코일은 전하를 저장하는 부품이 아니에요.',
+      },
+      ok: '대용량 축전기 장착, 수리 완료! 이제 ⏻ 전원을 켜 충전해 보세요.',
+    },
+    flash: {
+      title: '의뢰 ②  "플래시 섬광이 터지지 않아요"',
+      prompt: '알맞은 용량의 축전기를 골라 끼우세요 (클릭)',
+      parts: [['c10', '10 μF'], ['c100', '100 μF'], ['c1200', '1200 μF']],
+      answer: 'c1200',
+      wrong: {
+        c10: '용량이 너무 작아 섬광에 필요한 에너지를 모을 수 없어요.',
+        c100: '아직 부족해요 — 짧은 순간에 큰 에너지를 내려면 더 큰 용량이 필요해요.',
+      },
+      ok: '대용량 축전기 장착, 수리 완료! 초록 버튼으로 충전해 보세요.',
+    },
+    humid: {
+      title: '의뢰 ④  "습도가 항상 똑같이 나와요"',
+      prompt: '두 전극 사이에 알맞은 감지층을 골라 끼우세요 (클릭)',
+      parts: [['metal', '금속판'], ['glass', '유리판'], ['poly', '고분자 흡습층']],
+      answer: 'poly',
+      wrong: {
+        metal: '금속판은 두 전극을 그대로 이어 버려요(단락) — 전하를 저장할 수 없어요.',
+        glass: '유리는 수분을 머금지 못해 습도가 변해도 전하량이 변하지 않아요.',
+      },
+      ok: '흡습층 장착, 수리 완료! 습도 슬라이더를 움직여 보세요.',
+    },
+  };
+  const REPAIR_PREFIX = { aed: ['aedCap'], flash: ['flCap'], humid: ['hmLayer'] };
+
+  /** 후보 부품 모형 — 저항 / 코일 / 축전기(용량별 크기) / 판(금속·유리·흡습층) */
+  function mkPartMesh(kind, nm, parent) {
+    const g = new (B().TransformNode)(nm, scene);
+    g.parent = parent;
+    const add = (m) => { m.parent = g; return m; };
+    if (kind === 'res') {
+      const b = add(B().MeshBuilder.CreateCylinder(nm + 'b', { height: 0.7, diameter: 0.24 }, scene));
+      b.rotation.z = Math.PI / 2; b.position.y = 0.24;
+      b.material = mat(nm + 'bM', '#d8b478', '#f0e0b0', 64);
+      [-0.16, 0, 0.16].forEach((dx, i) => {
+        const r = add(B().MeshBuilder.CreateCylinder(nm + 'r' + i, { height: 0.09, diameter: 0.27 }, scene));
+        r.rotation.z = Math.PI / 2; r.position.set(dx, 0.24, 0);
+        r.material = mat(nm + 'rM' + i, ['#8a4a2c', '#1a1a1a', '#c03a2c'][i]);
+      });
+    } else if (kind === 'coil') {
+      for (let i = 0; i < 4; i++) {
+        const t = add(B().MeshBuilder.CreateTorus(nm + 't' + i, { diameter: 0.42, thickness: 0.08 }, scene));
+        t.position.y = 0.1 + i * 0.1;
+        t.material = mat(nm + 'tM' + i, '#c07830', '#ffd8a0', 96);
+      }
+    } else if (kind === 'metal' || kind === 'glass' || kind === 'poly') {
+      const b = add(B().MeshBuilder.CreateBox(nm + 'b', { width: 0.55, height: 0.8, depth: 0.5 }, scene));
+      b.position.y = 0.42;
+      const m2 = mat(nm + 'bM', kind === 'metal' ? '#aab6c8' : kind === 'glass' ? '#bcd8e8' : '#7fc0d8');
+      if (kind !== 'metal') m2.alpha = 0.6;
+      b.material = m2;
+    } else {   // 축전기 — c10 / c100 / c1200 / cap
+      const sc = kind === 'c10' ? 0.5 : kind === 'c100' ? 0.72 : 1.0;
+      const c = add(B().MeshBuilder.CreateCylinder(nm + 'c', { height: 0.8 * sc, diameter: 0.5 * sc }, scene));
+      c.position.y = 0.4 * sc;
+      c.material = mat(nm + 'cM', '#20315e', '#8898ac', 96);
+      const band = add(B().MeshBuilder.CreateCylinder(nm + 'bd', { height: 0.18 * sc, diameter: 0.52 * sc }, scene));
+      band.position.y = 0.62 * sc;
+      band.material = mat(nm + 'bdM', '#cfd8e8');
+    }
+    return g;
+  }
+
+  /** 부품 선반 + 의뢰 카드 */
+  function buildShelf(key, parent, x, y, z, scale) {
+    const R = REPAIR[key];
+    const g = new (B().TransformNode)('rpShelf_' + key, scene);
+    g.parent = parent;
+    g.position.set(x, y, z);
+    if (scale && scale !== 1) g.scaling.set(scale, scale, scale);
+    const tray = B().MeshBuilder.CreateBox('rpTray_' + key, { width: 3.5, height: 0.12, depth: 1.15 }, scene);
+    tray.position.y = 0.06;
+    tray.material = mat('rpTrayM_' + key, '#b89a6a', '#e0c898', 48);
+    tray.isPickable = false;
+    tray.parent = g;
+    const card = label('rpCard_' + key, R.title + '\n' + R.prompt, 5.6, 0.86, 26, '#b03a28');
+    card.position.set(0, 2.0, 0);
+    card.parent = g;
+    R.parts.forEach(([k, nm2], i) => {
+      const pg = mkPartMesh(k, 'rp_' + key + '_' + k, g);
+      pg.position.set(-1.15 + i * 1.15, 0.12, -0.1);
+      pg.getChildMeshes().forEach((m) => { m.metadata = { rp: key, part: k }; });
+      const pl = label('rpL_' + key + '_' + k, nm2, 1.3, 0.34, 22, '#3c4756');
+      pl.position.set(-1.15 + i * 1.15, 1.25, -0.1);
+      pl.parent = g;
+    });
+  }
+
+  /** 수리 전(고장) ↔ 수리 후 표시 전환 */
+  function setRepairVisual(key, on) {
+    (REPAIR_PREFIX[key] || []).forEach((pre) => {
+      scene.meshes.forEach((m) => { if (m.name.indexOf(pre) === 0) m.setEnabled(on); });
+    });
+    const shelf = scene.getTransformNodeByName('rpShelf_' + key);
+    if (shelf) shelf.setEnabled(!on);
+    if (key === 'humid' && humidG) layoutHumid();
+  }
+
+  function handleRepair(md) {
+    const key = md.rp;
+    if (key === 'touch') {
+      if (state.repaired.touch) return;
+      state.repaired.touch = true;
+      const w = scene.getMeshByName('tsW11');
+      if (w) w.setEnabled(true);
+      if (touchG._fixLbl) touchG._fixLbl.setEnabled(false);
+      if (touchG._fixBall) touchG._fixBall.setEnabled(false);
+      Lab.showHint('도선을 이었습니다, 수리 완료! 이제 번호판을 터치해 보세요.', true);
+      Lab.refresh();
+      return;
+    }
+    const R = REPAIR[key];
+    if (!R || state.repaired[key]) return;
+    if (md.part === R.answer) {
+      state.repaired[key] = true;
+      setRepairVisual(key, true);
+      Lab.showHint(R.ok, true);
+      Lab.refresh();
+    } else {
+      Lab.showHint(R.wrong[md.part] || '그 부품으로는 고칠 수 없어요.');
+    }
+  }
+
+  /** 수리 요소 일괄 생성 — 버튼 픽 프록시 · 부품 선반 · 끊어진 도선 */
+  function buildRepairs() {
+    // 얇은 3D 버튼은 옆·비스듬한 각도에서 클릭이 빗나가기 쉬우므로 투명 픽 프록시를 씌운다
+    [['aedBtnPwr', 'aedBtnHitP'], ['aedBtnShock', 'aedBtnHitS'],
+     ['flBtnPwr', 'flBtnHitP'], ['flBtn', 'flBtnHitS']].forEach(([src, nm]) => {
+      const s0 = scene.getMeshByName(src);
+      if (!s0) return;
+      const h = B().MeshBuilder.CreateSphere(nm, { diameter: 0.62 }, scene);
+      h.position.copyFrom(s0.position);
+      h.material = emat(nm + 'M', '#ffffff', 0.02);
+      h.parent = s0.parent;
+    });
+    buildShelf('aed', aedG, 1.05, 0, 2.6, 1);
+    buildShelf('flash', flashG, -0.4, 0, 1.9, 0.85);
+    buildShelf('humid', humidG, 0.4, 0, 2.9, 0.9);
+    // 터치스크린 — 구동 회로에서 전극으로 가는 도선이 끊겨 있다: ✕ 를 클릭해 잇는다
+    const card = label('rpCard_touch',
+      '의뢰 ③  "화면이 터치에 반응하지 않아요"\n붉은 ✕ (끊어진 도선)를 클릭해 이으세요', 6.4, 0.86, 26, '#b03a28');
+    card.position.set(-2.6, 5.0, 0);
+    card.parent = touchG;
+    touchG._fixLbl = card;
+    const fxBall = B().MeshBuilder.CreateSphere('rp_touchfix', { diameter: 0.32 }, scene);
+    fxBall.position.set(-0.8, 1.4, -0.18);
+    fxBall.material = emat('rp_touchfixM', '#e04a3a', 0.92);
+    fxBall.parent = touchG;
+    fxBall.metadata = { rp: 'touch', part: 'fix' };
+    touchG._fixBall = fxBall;
+    const w = scene.getMeshByName('tsW11');
+    if (w) w.setEnabled(false);
+    repairBuilt = true;
+    ['aed', 'flash', 'humid'].forEach((k) => setRepairVisual(k, false));
+  }
+
+  /** 탐구 수행 단계 자동 진행 조건 (content.steps.devices 와 1:1) */
+  function stepDone(i) {
+    if (i === 0) return state.repaired.aed && !!state._usedAed;
+    if (i === 1) return state.repaired.flash && !!state._usedFlash;
+    if (i === 2) return state.repaired.touch && state.dialed.length > 0;
+    if (i === 3) return state.repaired.humid && !!state._humidMoved;
+    return false;
+  }
+
   /* ── 포인터 — 기기 버튼 클릭 + 터치 체험 + 분류 게임 드래그 ── */
   function bindPointer(canvas) {
     scene.onPointerObservable.add((info) => {
+      // 수리(부품 선택·도선 잇기) — 어떤 기기 화면에서든 가장 먼저 확인
+      if (info.type === B().PointerEventTypes.POINTERDOWN) {
+        const pk0 = info.pickInfo;
+        const md = pk0 && pk0.hit && pk0.pickedMesh && pk0.pickedMesh.metadata;
+        if (md && md.rp) { handleRepair(md); return; }
+      }
       // 기기의 3D 버튼을 직접 클릭 (전원=충전 · ⚡/셔터=방전)
+      // 얇은 버튼 옆면에서도 클릭되도록 투명 픽 프록시(…Hit…)도 함께 받는다
       if ((state.mode === 'aed' || state.mode === 'flash') &&
           info.type === B().PointerEventTypes.POINTERDOWN) {
         const pk = info.pickInfo;
         const n = pk && pk.hit && pk.pickedMesh && pk.pickedMesh.name;
-        if (n === 'aedBtnPwr' || n === 'flBtnPwr') {
+        const isPwr = n === 'aedBtnPwr' || n === 'flBtnPwr' || n === 'aedBtnHitP' || n === 'flBtnHitP';
+        const isShot = n === 'aedBtnShock' || n === 'flBtn' || n === 'aedBtnHitS' || n === 'flBtnHitS';
+        if ((isPwr || isShot) && !state.repaired[state.mode]) {
+          Lab.showHint('아직 수리 전이에요 — 앞의 부품 선반에서 알맞은 부품을 골라 끼우세요.');
+          return;
+        }
+        if (isPwr) {
           state.charging = true;
           Lab.refresh();
-        } else if (n === 'aedBtnShock' || n === 'flBtn') {
+        } else if (isShot) {
           discharge();
           Lab.refresh();
         }
@@ -736,6 +933,10 @@ const DeviceScene = (() => {
       if (state.mode === 'touch' && info.type === B().PointerEventTypes.POINTERDOWN) {
         const pick = info.pickInfo;
         if (!pick || !pick.hit || pick.pickedMesh !== touchScreen) return;
+        if (!state.repaired.touch) {
+          Lab.showHint('화면이 반응하지 않아요 — 붉은 ✕ 지점(끊어진 도선)을 클릭해 이어 주세요.');
+          return;
+        }
         const uv = pick.getTextureCoordinates();
         if (!uv) return;
         const px = uv.x * 720, py = (1 - uv.y) * 408;
@@ -749,7 +950,7 @@ const DeviceScene = (() => {
           state.touchedT = 1.2;
           state.noSense = false;
           state.ripples.push({ x: px, y: py, t: 0.6 });
-          // 전자가 화면에서 «빠져나오는» 방전 입자
+          // 전자가 화면에서 빠져나오는 방전 입자
           const wx = (uv.x - 0.5) * 6.0;
           const wy = 2.2 + (uv.y - 0.5) * 3.4;
           for (let k = 0; k < 4; k++) {
@@ -798,7 +999,7 @@ const DeviceScene = (() => {
     });
   }
 
-  /* ── 습도 센서 — 공기 중 수증기와 흡습층 수분은 «평형» (같은 비율로 표시) ── */
+  /* ── 습도 센서 — 공기 중 수증기와 흡습층 수분은 평형 (같은 비율로 표시) ── */
   function buildHumid() {
     humidG = new (B().TransformNode)('dvHumid', scene);
     block('hmPcb', humidG, 0.4, 0.3, 0, 5.2, 0.18, 2.6, '#2c6a3c', '');
@@ -825,8 +1026,8 @@ const DeviceScene = (() => {
     wire3([[-0.9, 0.45, 0.6], [-0.9, 0.4, 0.9], [2.3, 0.4, 0.9], [2.3, 0.55, 0.75]], humidG, 'hmW1', '#c0392b');
     wire3([[0.9, 0.45, 0.5], [2.0, 0.5, 0.6]], humidG, 'hmW2', '#3c4756');
     wire3([[2.7, 0.55, 0.6], [3.4, 0.9, 0.3], [3.6, 1.3, 0]], humidG, 'hmW3', '#3c4756');
-    // 물 분자 — «극성 분자» 모형: 산소(붉은 큰 구, δ−) + 수소(흰 작은 구 2개, δ+)
-    // 공기 중에서는 방향이 제멋대로, 흡습층 안(전기장 속)에서는 «정렬»된다 — 유전 분극
+    // 물 분자 — 극성 분자 모형: 산소(붉은 큰 구, δ−) + 수소(흰 작은 구 2개, δ+)
+    // 공기 중에서는 방향이 제멋대로, 흡습층 안(전기장 속)에서는 정렬된다 — 유전 분극
     const oMat = emat('hmMolO', '#d04838', 0.95);
     const hMat = emat('hmMolH', '#f0f0f0', 0.95);
     const mkMol = (nm, aligned) => {
@@ -918,11 +1119,12 @@ const DeviceScene = (() => {
     const frac = (state.humid - 20) / 70;
     const n = 2 + Math.round(frac * 16);
     // 공기 중과 흡습층의 수증기·수분을 같은 비율로 — 평형
-    humidMolsLayer.forEach((m, i) => m.setEnabled(i < n));
+    const okH = state.repaired.humid;
+    humidMolsLayer.forEach((m, i) => m.setEnabled(okH && i < n));
     humidMolsAir.forEach((m, i) => m.setEnabled(i < n));
     humidLayer.material.alpha = 0.2 + frac * 0.35;
     // 전극에 충전된 전하 — 분극된 물 분자가 늘수록 함께 늘어난다 (고른 분포)
-    const nq = Math.round(humidCharge() / 140 * 12);
+    const nq = okH ? Math.round(humidCharge() / 140 * 12) : 0;
     const drawQ = (tex, sign) => {
       const c = tex.getContext();
       c.clearRect(0, 0, 170, 210);
@@ -955,7 +1157,7 @@ const DeviceScene = (() => {
         sh.material = mat('srtShelfM' + i, hex, '#f0e0c0', 48);
         sh.isPickable = false;
         sh.parent = sortG;
-        // 이름표를 «뒤판»에 고정 (빌보드 아님 — 돌려 봐도 판에 붙어 있다)
+        // 이름표를 뒤판에 고정 (빌보드 아님 — 돌려 봐도 판에 붙어 있다)
         const board = B().MeshBuilder.CreateBox('srtBoard' + i, { width: 4.6, height: 1.2, depth: 0.16 }, scene);
         board.position.set(x, 1.3, -2.85);
         board.material = mat('srtBoardM' + i, hex, '#f0e0c0', 48);
@@ -1113,6 +1315,14 @@ const DeviceScene = (() => {
     touchSparks = [];
     state.humid = 45;
     state.sorted = { aed: 0, flash: 0, touch: 0, humid: 0 };
+    state.repaired = { aed: false, flash: false, touch: false, humid: false };
+    state._usedAed = false; state._usedFlash = false; state._humidMoved = false;
+    if (repairBuilt) {
+      ['aed', 'flash', 'humid'].forEach((k) => setRepairVisual(k, false));
+      const wfix = scene.getMeshByName('tsW11');
+      if (wfix) wfix.setEnabled(false);
+      if (touchG && touchG._fixLbl) { touchG._fixLbl.setEnabled(true); touchG._fixBall.setEnabled(true); }
+    }
     dragSort = null;
     if (touchTex) drawTouchTex();
     layout();
@@ -1235,6 +1445,8 @@ const DeviceScene = (() => {
     state.gauge = 0;
     state.flashT = 0.5;
     state.shots += 1;
+    if (state.mode === 'aed') state._usedAed = true;
+    if (state.mode === 'flash') state._usedFlash = true;
   }
 
   function update() { layout(); }
@@ -1248,7 +1460,7 @@ const DeviceScene = (() => {
   }
 
   /* ══ 컨트롤 ═════════════════════════════════ */
-  const guide = '기기 4종을 차례로 점검하세요 — 충전·방전을 쓰는 기기와, 충전된 전하량의 변화를 쓰는 기기를 구분하는 것이 오늘의 미션!';
+  const guide = '수리 의뢰 4건! 기기마다 고장 원인을 찾아 알맞은 부품으로 고친 뒤 작동을 확인하세요 — 마지막에 두 원리로 분류하면 인증서!';
   const prepGuide = '';
 
   function controlsHTML() {
@@ -1266,8 +1478,8 @@ const DeviceScene = (() => {
           <div class="clabel">조작 방법</div>
           <div class="cbody" style="display:flex;align-items:center;font-size:12.5px;color:#41566f;line-height:1.5">
             ${state.mode === 'aed'
-              ? '화면 속 기기의 <b>&nbsp;⏻ 전원&nbsp;</b>(충전)과 <b>&nbsp;⚡ 심장 충격&nbsp;</b>(방전) 버튼을 직접 클릭하세요'
-              : '화면 속 플래시의 <b>&nbsp;초록 버튼&nbsp;</b>(충전)과 <b>&nbsp;빨강 셔터&nbsp;</b>(방전)를 직접 클릭하세요'}
+              ? '① 부품 선반에서 알맞은 부품을 골라 수리 → ② 기기의 <b>&nbsp;⏻ 전원&nbsp;</b>(충전)과 <b>&nbsp;⚡ 심장 충격&nbsp;</b>(방전) 버튼을 직접 클릭'
+              : '① 알맞은 용량의 축전기로 교체 → ② 플래시의 <b>&nbsp;초록 버튼&nbsp;</b>(충전)과 <b>&nbsp;빨강 셔터&nbsp;</b>(방전)를 직접 클릭'}
           </div>
         </div>`;
     }
@@ -1317,8 +1529,11 @@ const DeviceScene = (() => {
       LabUI.bindOpts(root, 'explode', state, 'explode', () => { layoutTouchLayers(); onChange(); },
         (v) => v === '1');
     } else if (state.mode === 'humid') {
-      LabUI.bindSlider(root, 'humidCtl', state, 'humid', (v) => `${v} %`,
-        () => { layoutHumid(); onChange(); });
+      LabUI.bindSlider(root, 'humidCtl', state, 'humid', (v) => `${v} %`, () => {
+        if (state.repaired.humid) state._humidMoved = true;
+        else Lab.showHint('감지층이 비어 있어 값이 변하지 않아요 — 부품 선반에서 알맞은 판을 끼우세요.');
+        layoutHumid(); onChange();
+      });
     } else {
       const rb = root.querySelector('#sortResetBtn');
       if (rb) rb.addEventListener('click', () => {
@@ -1348,7 +1563,7 @@ const DeviceScene = (() => {
           ? '전원의 전하가 변환 회로를 거쳐 축전기에 모이는 중… 노란 전류 점의 경로를 보세요. ' + (state.mode === 'aed'
             ? 'AED 는 많은 에너지를 짧은 시간에 내보내야 해서 충전 용량이 큰 축전기를 씁니다 (84쪽).'
             : '전지 전압을 승압 회로가 높여 축전기에 저장합니다.')
-          : '«충전 시작»을 눌러 축전기에 전기 에너지를 모아 보세요. 이 기기는 <b>충전·방전</b>을 이용합니다.'}</div>`;
+          : '충전 시작을 눌러 축전기에 전기 에너지를 모아 보세요. 이 기기는 <b>충전·방전</b>을 이용합니다.'}</div>`;
     }
     if (state.mode === 'touch') {
       return `
@@ -1361,7 +1576,7 @@ const DeviceScene = (() => {
         <div class="formula">${state.noSense
           ? '부도체는 전하를 데려가지 못해 전하량이 변하지 않습니다 — 센서가 아무것도 감지하지 못하는 까닭 (생활 속 탐구, 85쪽).'
           : state.touched
-          ? '접촉한 «그 지점만» 전자가 빠져나가고, 구동 회로가 곧바로 다시 채웁니다 — 그래서 연속으로 터치를 감지할 수 있습니다 (85쪽).'
+          ? '접촉한 그 지점만 전자가 빠져나가고, 구동 회로가 곧바로 다시 채웁니다 — 그래서 연속으로 터치를 감지할 수 있습니다 (85쪽).'
           : '아래 구동 회로가 두 전극에 낮은 전압을 걸어 전하를 퍼뜨려 둡니다. 화면을 눌러 보세요 — 누른 자리에 리플이 번집니다.'}</div>`;
     }
     if (state.mode === 'humid') {
@@ -1383,7 +1598,7 @@ const DeviceScene = (() => {
       <div class="formula">${score === 4
         ? '<b style="color:#2f9e6b">완벽합니다! 정식 엔지니어 인증서 획득 🏅</b> — 축전기는 ① 저장한 에너지를 한 번에 쓰거나(충전·방전) ② 전하량의 변화를 감지하는(센서) 두 방식으로 활용됩니다 (84쪽).'
         : wrong.length
-        ? `<b style="color:#d0453a">${wrong.map((k) => DEV_NAME[k]).join(', ')}</b> 의 자리를 다시 생각해 보세요 — 그 기기를 점검할 때 게이지가 «찼다가 한 번에 비워졌는지», 아니면 «환경에 따라 변했는지» 떠올려 보세요.`
+        ? `<b style="color:#d0453a">${wrong.map((k) => DEV_NAME[k]).join(', ')}</b> 의 자리를 다시 생각해 보세요 — 그 기기를 점검할 때 게이지가 찼다가 한 번에 비워졌는지, 아니면 환경에 따라 변했는지 떠올려 보세요.`
         : '점검했던 기기 미니어처를 <b>끌어서</b> 알맞은 선반에 올려놓으세요. 4개 모두 맞히면 인증서!'}</div>`;
   }
 
@@ -1422,7 +1637,7 @@ const DeviceScene = (() => {
       ctx.fillStyle = '#e8ecf4'; ctx.font = 'bold 13px "Noto Sans KR", sans-serif';
       ctx.textAlign = 'left'; ctx.textBaseline = 'top';
       ctx.fillText(`지금 비어 있는 자리 ${n}곳 — 구동 회로가 다시 채우는 중`, padL + 16, padT + 10);
-      ctx.fillText('원리: 접촉 «순간»의 전하량 변화 감지', padL + 16, padT + 34);
+      ctx.fillText('원리: 접촉 순간의 전하량 변화 감지', padL + 16, padT + 34);
       const cw = (gw - 40) / GRID_W, ch = (gh - 70) / GRID_H;
       for (let r = 0; r < GRID_H; r++) {
         for (let col = 0; col < GRID_W; col++) {
@@ -1501,7 +1716,7 @@ const DeviceScene = (() => {
     guide, prepGuide, tools,
     create, update, tick, resetCamera,
     placeTool, resetTools, allPlaced, dropAt, slotName,
-    controlsHTML, bindControls, readoutHTML,
+    controlsHTML, bindControls, readoutHTML, stepDone,
     graphTitle, drawGraph, graphFootHTML,
     recordColumns, recordRow,
     state, humidCharge, sortScore, ANSWER,
