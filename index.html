@@ -5,6 +5,60 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>축전기 서비스 센터 — 축전기의 원리와 활용</title>
 <link rel="stylesheet" href="common/lab.css">
+<style>
+/* ── 지능형 과학실 ON 공통 «학습 흐름» 메뉴 바 (이 시뮬레이션 전용) ── */
+.lab-screen {
+  grid-template-areas: "top top" "flow flow" "stage side" "ctrl ctrl";
+  grid-template-rows: var(--topbar-h) 42px 1fr var(--ctrl-h);
+}
+.flownav {
+  grid-area: flow;
+  display: flex; align-items: stretch;
+  background: linear-gradient(180deg, #2f6fd6, #2a63c2);
+  box-shadow: 0 2px 5px rgb(15 50 100 / 18%);
+  position: relative; z-index: 7;
+  overflow-x: auto; scrollbar-width: none;
+}
+.flownav::-webkit-scrollbar { display: none; }
+.fn-item {
+  position: relative;
+  padding: 0 17px;
+  color: #e3edfb; font-size: 13.5px; font-weight: 600;
+  white-space: nowrap;
+  border-bottom: 3px solid transparent;
+  transition: background .15s;
+}
+.fn-item:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+.fn-item.on { background: #fff; color: #1a4fa0; border-bottom-color: #f0a92b; font-weight: 700; }
+.fn-caret { font-size: 9px; margin-left: 4px; vertical-align: middle; }
+.fn-done {
+  display: inline-block; margin-left: 5px;
+  width: 15px; height: 15px; line-height: 15px; border-radius: 50%;
+  background: #2f9e6b; color: #fff; font-size: 10px; text-align: center; font-weight: 800;
+}
+.fn-dd {
+  position: absolute; top: 42px; left: auto;
+  background: #fff; border: 1px solid var(--line); border-top: 0;
+  min-width: 320px; box-shadow: 0 8px 18px rgb(20 50 90 / 18%);
+  z-index: 80; display: none;
+  border-radius: 0 0 12px 12px; overflow: hidden;
+}
+.fn-dd.open { display: block; }
+.fn-dd-item {
+  display: flex; gap: 9px; align-items: center;
+  width: 100%; text-align: left; padding: 11px 14px;
+  font-size: 13px; border-bottom: 1px solid #e8eef6; color: #41566f;
+}
+.fn-dd-item:last-child { border-bottom: 0; }
+.fn-dd-item:hover { background: #f2f7fd; color: #1a4fa0; }
+.fn-dd-item.on { color: #1a4fa0; font-weight: 700; background: #f2f7fd; }
+.fn-num {
+  width: 19px; height: 19px; border-radius: 50%;
+  background: #1a4fa0; color: #fff; font-size: 11px; font-weight: 700;
+  display: grid; place-items: center; flex: none;
+}
+#flowModal .modal-box { width: min(760px, 94vw); }
+</style>
 </head>
 <body>
 <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -23,5 +77,6 @@
     content: LabContent,
   });
 </script>
+<script src="js/flow.js"></script>
 </body>
 </html>
