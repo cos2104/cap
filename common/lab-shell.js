@@ -461,21 +461,22 @@ const Lab = (() => {
       refresh();
     });
 
-    $('#readoutToggle').addEventListener('click', () => {
-      const p = $('#readout');
-      p.classList.toggle('collapsed');
-      $('#readoutToggle').textContent = p.classList.contains('collapsed') ? '＋' : '－';
-    });
-    $('#graphToggle').addEventListener('click', () => {
-      const p = $('#graphPanel');
-      p.classList.toggle('collapsed');
-      $('#graphToggle').textContent = p.classList.contains('collapsed') ? '＋' : '－';
-    });
-    $('#recToggle').addEventListener('click', () => {
-      const p = $('#recordPanel');
-      p.classList.toggle('collapsed');
-      $('#recToggle').textContent = p.classList.contains('collapsed') ? '＋' : '－';
-    });
+    // 무대 위 패널 접기 — 좁은 화면에서는 하나를 펼치면 나머지를 접는다
+    const PANEL_TOGGLES = [
+      ['readout', 'readoutToggle'], ['graphPanel', 'graphToggle'],
+      ['recordPanel', 'recToggle'], ['stepsPanel', 'stepToggle'],
+    ];
+    const setCollapsed = (p, t, on) => {
+      $('#' + p).classList.toggle('collapsed', on);
+      $('#' + t).textContent = on ? '＋' : '－';
+    };
+    PANEL_TOGGLES.forEach(([p, t]) => $('#' + t).addEventListener('click', () => {
+      const willOpen = $('#' + p).classList.contains('collapsed');
+      if (willOpen && matchMedia('(max-width: 820px)').matches) {
+        PANEL_TOGGLES.forEach(([p2, t2]) => { if (p2 !== p) setCollapsed(p2, t2, true); });
+      }
+      setCollapsed(p, t, !willOpen);
+    }));
     $('#recAdd').addEventListener('click', addRecord);
     $('#recClear').addEventListener('click', () => { records = []; renderRecords(); });
 
@@ -490,12 +491,6 @@ const Lab = (() => {
         renderSteps();
       }
     });
-    $('#stepToggle').addEventListener('click', () => {
-      const p = $('#stepsPanel');
-      p.classList.toggle('collapsed');
-      $('#stepToggle').textContent = p.classList.contains('collapsed') ? '＋' : '－';
-    });
-
     $$('.sidebar button').forEach((b) => b.addEventListener('click', () => {
       if (b.dataset.action === 'home') { location.href = './'; return; }
       if (b.dataset.action === 'restart') {

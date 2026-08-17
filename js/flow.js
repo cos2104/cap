@@ -56,46 +56,66 @@ const LabFlow = (() => {
         <text x="230" y="95" font-size="12" fill="#41566f" text-anchor="middle">같은 종류의 전하는 서로 밀어냅니다</text></svg>`;
     }
     /* LED — 닫힌 회로 두 개를 나란히: 왼쪽은 정방향(전류가 흘러 켜짐),
-       오른쪽은 LED만 반대로 끼운 같은 회로(전류가 흐르지 않아 꺼짐). */
+       오른쪽은 LED만 반대로 끼운 같은 회로(전류가 흐르지 않아 꺼짐).
+       도선은 전지 사이만 빼고 끊김 없이 이어지고, LED 기호 양끝에
+       «+ 긴 다리 / − 짧은 다리»를 표기한다. */
     const loop = (x0, fwd) => {
-      // 전지: 아래 변 가운데 — 긴 세로선(+), 짧고 굵은 세로선(−)
-      // LED: 위 변 가운데 — 삼각형(전류 허용 방향) + 막대
       const wire = `stroke="#8899ad" stroke-width="4" fill="none" stroke-linecap="round"`;
-      const cur = `M${x0 + 92},105 H${x0 + 22} V30 H${x0 + 198} V105 H${x0 + 128}`; // + 극에서 나와 −극으로
+      // 위 변은 한 번에 그려 끊김이 없게 하고, LED 기호는 그 위에 겹쳐 그린다
+      const cur = `M${x0 + 92},105 H${x0 + 22} V30 H${x0 + 198} V105 H${x0 + 128}`; // + 극에서 나와 − 극으로
+      const c = fwd ? '#d8434e' : '#9aa7b8';
+      // 정방향: 긴 다리(+, 삼각형 쪽)가 왼쪽(전지 + 방향) / 역방향: 긴 다리가 오른쪽
+      const tri = fwd
+        ? `<polygon points="${x0 + 86},18 ${x0 + 86},42 ${x0 + 110},30" fill="${c}"/>
+           <line x1="${x0 + 112}" y1="16" x2="${x0 + 112}" y2="44" stroke="${c}" stroke-width="4.5"/>`
+        : `<polygon points="${x0 + 134},18 ${x0 + 134},42 ${x0 + 110},30" fill="${c}"/>
+           <line x1="${x0 + 108}" y1="16" x2="${x0 + 108}" y2="44" stroke="${c}" stroke-width="4.5"/>`;
+      const legL = fwd ? ['+ 긴 다리', '#d8434e'] : ['− 짧은 다리', '#2f6fd6'];
+      const legR = fwd ? ['− 짧은 다리', '#2f6fd6'] : ['+ 긴 다리', '#d8434e'];
       return `
-        <path d="M${x0 + 92},105 H${x0 + 22} V30 H${x0 + 80}" ${wire}/>
-        <path d="M${x0 + 130},30 H${x0 + 198} V105 H${x0 + 128}" ${wire}/>
+        <path d="${cur}" ${wire}/>
         <line x1="${x0 + 98}" y1="86" x2="${x0 + 98}" y2="124" stroke="#41566f" stroke-width="3"/>
         <line x1="${x0 + 116}" y1="96" x2="${x0 + 116}" y2="114" stroke="#41566f" stroke-width="7"/>
-        <text x="${x0 + 88}" y="128" font-size="13" fill="#d8434e" text-anchor="end" font-weight="800">+</text>
-        <text x="${x0 + 128}" y="128" font-size="13" fill="#2f6fd6" font-weight="800">−</text>
-        ${fwd
-          ? `<polygon points="${x0 + 84},18 ${x0 + 84},42 ${x0 + 106},30" fill="#d8434e"/>
-             <line x1="${x0 + 108}" y1="16" x2="${x0 + 108}" y2="44" stroke="#d8434e" stroke-width="4"/>
-             <circle cx="${x0 + 95}" cy="30" r="22" fill="#f5a623" opacity=".22">
-               <animate attributeName="r" values="18;24;18" dur="1.4s" repeatCount="indefinite"/></circle>
-             ${[0, 1, 2, 3].map((i) => `<circle r="4.5" fill="#2f6fd6">
-               <animateMotion dur="2.6s" begin="${-i * 0.65}s" repeatCount="indefinite" path="${cur}"/></circle>`).join('')}
-             <text x="${x0 + 68}" y="14" font-size="10.5" fill="#2e9e5b" font-weight="700">긴 다리가 + 쪽</text>`
-          : `<polygon points="${x0 + 130},18 ${x0 + 130},42 ${x0 + 108},30" fill="#9aa7b8"/>
-             <line x1="${x0 + 106}" y1="16" x2="${x0 + 106}" y2="44" stroke="#9aa7b8" stroke-width="4"/>
-             <text x="${x0 + 66}" y="14" font-size="10.5" fill="#d8434e" font-weight="700">긴 다리가 − 쪽</text>`}`;
+        <text x="${x0 + 88}" y="134" font-size="13" fill="#d8434e" text-anchor="end" font-weight="800">+</text>
+        <text x="${x0 + 128}" y="134" font-size="13" fill="#2f6fd6" font-weight="800">−</text>
+        ${fwd ? `<circle cx="${x0 + 99}" cy="30" r="22" fill="#f5a623" opacity=".25">
+             <animate attributeName="r" values="18;25;18" dur="1.4s" repeatCount="indefinite"/></circle>` : ''}
+        ${tri}
+        <text x="${x0 + 82}" y="12" font-size="10.5" fill="${legL[1]}" text-anchor="end" font-weight="800">${legL[0]}</text>
+        <text x="${x0 + 138}" y="12" font-size="10.5" fill="${legR[1]}" font-weight="800">${legR[0]}</text>
+        ${fwd ? [0, 1, 2, 3].map((i) => `<circle r="4.5" fill="#2f6fd6">
+             <animateMotion dur="2.6s" begin="${-i * 0.65}s" repeatCount="indefinite" path="${cur}"/></circle>`).join('') : ''}`;
     };
-    return `<svg viewBox="0 0 460 158" style="width:100%;background:#f6f9fd;border:1px solid #dde5f0;border-radius:9px">
+    return `<svg viewBox="0 0 460 164" style="width:100%;background:#f6f9fd;border:1px solid #dde5f0;border-radius:9px">
       ${loop(5, true)}${loop(235, false)}
-      <text x="115" y="150" font-size="12" fill="#2e9e5b" text-anchor="middle" font-weight="700">전류가 흐른다 → 켜짐</text>
-      <text x="345" y="150" font-size="12" fill="#8a97a8" text-anchor="middle" font-weight="700">전류가 흐르지 않는다 → 꺼짐</text></svg>`;
+      <text x="115" y="156" font-size="12" fill="#2e9e5b" text-anchor="middle" font-weight="700">전류가 흐른다 → 켜짐</text>
+      <text x="345" y="156" font-size="12" fill="#8a97a8" text-anchor="middle" font-weight="700">전류가 흐르지 않는다 → 꺼짐</text></svg>`;
   }
 
-  /* ── 확인하기 — 기존 퀴즈 5문항 + 문항별 이동 안내 ───── */
+  /* ── 확인하기 — 기존 퀴즈 5문항 + 문항별 이동 안내·교과서 그림 ── */
   const CHECK_META = [
-    { exp: 'circuit', fb: '① 충전과 방전 화면에서 스위치를 A(충전)로 두고, 전하가 어디에 멈추어 쌓이는지 다시 관찰해 보세요.' },
-    { exp: 'circuit', fb: '① 충전과 방전 화면에서 방전을 슬로 모션으로 다시 보세요. 판에 있던 전하가 어디로 갔나요?' },
-    { exp: 'struct', fb: '② 축전기의 구조 조립 미션에서 게이지가 2배가 되었을 때 무엇을 바꾸었는지 떠올려 보세요.' },
-    { exp: 'devices', fb: '③ 생활 속 축전기의 원리 분류 게임에서 네 기기를 두 선반에 다시 나눠 보세요.' },
-    { exp: 'devices', fb: '③ 터치스크린 점검에서 손가락과 지우개로 화면을 눌러 보고 무엇이 다른지 확인해 보세요.' },
+    { exp: 'circuit', img: 'capx-circuit', fb: '① 충전과 방전 화면에서 스위치를 A(충전)로 두고, 전하가 어디에 멈추어 쌓이는지 다시 관찰해 보세요.' },
+    { exp: 'circuit', img: 'capx-led', fb: '① 충전과 방전 화면에서 방전을 슬로 모션으로 다시 보세요. 판에 있던 전하가 어디로 갔나요?' },
+    { exp: 'struct', img: 'capx-roll', fb: '② 축전기의 구조 조립 미션에서 게이지가 2배가 되었을 때 무엇을 바꾸었는지 떠올려 보세요.' },
+    { exp: 'devices', img: 'capx-table', fb: '③ 생활 속 축전기의 원리 분류 게임에서 네 기기를 두 선반에 다시 나눠 보세요.' },
+    { exp: 'devices', img: 'capx-touch', fb: '③ 터치스크린 점검에서 손가락과 지우개로 화면을 눌러 보고 무엇이 다른지 확인해 보세요.' },
   ];
   let CHECK = [];   // init에서 LabContent.quiz + CHECK_META 로 구성
+
+  /** 내장 교과서 그림 (thumbs-data) → figure. 없으면 빈 문자열 */
+  function thumb(key, cap) {
+    const src = (typeof window !== 'undefined' && window.THUMB_DATA) ? window.THUMB_DATA[key] : null;
+    return src ? `<figure class="fx-fig"><img src="${src}" alt="${cap}"><figcaption>${cap}</figcaption></figure>` : '';
+  }
+  const figs = (inner) => (inner ? `<div class="fx-figs">${inner}</div>` : '');
+
+  /** 진행바 한 줄 */
+  function bar(label, val, max, extra = '') {
+    const pct = Math.max(0, Math.min(100, Math.round((val / max) * 100)));
+    return `<div class="wl"><span class="wl-t">${label}</span>
+      <div class="wl-bar"><i style="width:${pct}%"></i></div>
+      <span class="wl-v">${val} / ${max}${extra}</span></div>`;
+  }
 
   const ESSAY_KEYS = [
     ['접촉 지점', /접촉|닿|누른|그 자리|그 지점|위치/],
@@ -217,6 +237,7 @@ const LabFlow = (() => {
           `<button class="quiz-opt ${q.pick[i] === j ? (j === Q.answer ? 'right' : 'wrong') : ''}"
              data-fq="${i}" data-fj="${j}">${j + 1}. ${c}</button>`).join('')}</div>
         ${q.pick[i] !== null && q.pick[i] !== Q.answer ? `<div class="quiz-result x">${Q.fb}
+            ${figs(thumb(Q.img, '교과서 그림 다시 보기'))}
             <div class="quiz-actions" style="margin-top:8px">
               <button data-fgo="${Q.exp}">그 실험 화면으로 가기 →</button></div></div>` : ''}
         ${q.pick[i] === Q.answer ? `<div class="quiz-result o">맞았어요. ${Q.why}</div>` : ''}`).join('')}
@@ -254,19 +275,22 @@ const LabFlow = (() => {
     }
   }
 
-  /* ── 나의 탐구 현황 — 핵심정리 패널 아래에 덧붙임 ───── */
+  /* ── 나의 탐구 현황(진행바) — 핵심정리 패널 아래에 덧붙임 ── */
   function wrapExtraHTML() {
     const sortOk = (typeof DeviceScene !== 'undefined') ? DeviceScene.sortScore() : 0;
     const round = (typeof StructScene !== 'undefined') ? StructScene.state.round : 1;
     const stage = (typeof StructScene !== 'undefined') ? StructScene.state.stage : 0;
-    return `<h3>나의 탐구 현황</h3>
-      <ul>
-        <li>진단하기 — ${diagDone() ? `완료 (${state.diag.ok.filter(Boolean).length}/3 정답)` : '미실시'}</li>
-        <li>② 분해 관찰 — ${stage + 1} / 5 단계 · 조립 라운드 ${Math.min(round, 3)}${round === 4 ? ' (모두 통과 🏅)' : ''}</li>
-        <li>③ 원리 분류 게임 — ${sortOk} / 4 정답${sortOk === 4 ? ' (정식 엔지니어 인증서 🏅)' : ''}</li>
-        <li>확인하기 — ${checkDone() ? `선택형 ${quizScore()}/${CHECK.length}` : '미실시'}</li>
-      </ul>
-      <p style="margin-top:8px">아직 못 해 본 활동이 있다면 위쪽 실험 탭(①·②·③)으로 돌아가 이어서 해 보세요.
+    const dAns = state.diag.pick.filter((p) => p !== null).length;
+    const qAns = state.quiz.pick.filter((p) => p !== null).length;
+    return `<h3>교과서 그림 다시 보기</h3>
+      ${figs(thumb('capx-roll', '원통형 축전기의 구조 (83쪽)') + thumb('capx-table', '생활 속 축전기 기기 (84쪽)'))}
+      <h3>나의 탐구 현황</h3>
+      ${bar('진단하기', dAns, 3, diagDone() ? ` · 정답 ${state.diag.ok.filter(Boolean).length}` : '')}
+      ${bar('② 분해 관찰', stage + 1, 5, ' 단계')}
+      ${bar('② 조립 라운드', Math.min(round - 1, 3), 3, round === 4 ? ' 🏅' : '')}
+      ${bar('③ 원리 분류', sortOk, 4, sortOk === 4 ? ' 🏅' : '')}
+      ${bar('확인하기', qAns, CHECK.length, checkDone() ? ` · 정답 ${quizScore()}` : '')}
+      <p style="margin-top:10px">아직 못 해 본 활동이 있다면 위쪽 실험 탭(①·②·③)으로 돌아가 이어서 해 보세요.
       마치면 <b>창의적으로 생각하기</b>와 <b>보고서 다운로드</b>로 정리합니다.</p>`;
   }
 
@@ -422,10 +446,19 @@ ${row('서술형 (터치스크린 위치 감지)', state.quiz.essay)}</table>
     bRep.addEventListener('click', downloadReport);
     bCre.after(bRep);
 
-    // ④ 핵심정리 — 셸이 content.summary 를 그린 뒤 «나의 탐구 현황»을 덧붙인다
+    // ④ 핵심정리 — 셸이 content.summary 를 그린 뒤 그림·진행바를 덧붙인다
     sb.querySelector('[data-panel="summary"]').addEventListener('click', () => {
       const body = $('#panelBody');
       if (body) body.insertAdjacentHTML('beforeend', wrapExtraHTML());
+    });
+
+    // ⑤ 사전학습 — 글 아래에 교과서 그림을 덧붙여 이해를 돕는다
+    sb.querySelector('[data-panel="pre"]').addEventListener('click', () => {
+      const body = $('#panelBody');
+      if (body) body.insertAdjacentHTML('beforeend',
+        `<h3>교과서 그림 미리 보기</h3>
+         ${figs(thumb('capx-circuit', '축전기 충전 회로 — 해 보기 (82쪽)')
+              + thumb('capx-led', 'LED 로 방전 확인 — 해 보기 (82쪽)'))}`);
     });
 
     $('#panelClose').addEventListener('click', paintBadges);

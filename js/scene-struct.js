@@ -290,11 +290,15 @@ const StructScene = (() => {
     }
   }
 
-  /** 컨트롤의 단계 버튼 표시를 현재 단계와 맞춘다 */
+  /** 컨트롤의 «다음 단계» 버튼 표시를 현재 단계와 맞춘다 */
+  const STAGE_NAMES = ['① 겉모습', '② 껍질 벗기기', '③ 꺼내어 눕히기', '④ 펼치기', '⑤ 층 분리'];
   function syncStageButtons() {
-    document.querySelectorAll('[data-stage]').forEach((b) => {
-      b.classList.toggle('on', +b.getAttribute('data-stage') === state.stage);
-    });
+    const now = document.getElementById('stageNow');
+    const btn = document.getElementById('stageNextBtn');
+    if (now) now.textContent = `지금: ${STAGE_NAMES[state.stage]} (${state.stage + 1}/5)`;
+    if (btn) btn.innerHTML = state.stage < 4
+      ? `다음 단계: ${STAGE_NAMES[state.stage + 1]} ▶`
+      : '분해 완료 — 처음부터 다시 ↺';
   }
 
   /* ── 조립 모드 ─────────────────────────────── */
@@ -662,13 +666,16 @@ const StructScene = (() => {
     ], state.mode, 1);
 
     if (state.mode === 'peel') {
+      // 분해는 순서대로만 진행 — 버튼 하나(다음 단계)로 줄이고, 부품 클릭으로도 진행된다
       return `
         ${modeBtns}
-        ${LabUI.opts('분해 단계 (부품을 클릭해도 진행)', 'stage', [
-          { v: 0, t: '① 겉모습' }, { v: 1, t: '② 껍질 벗기기' },
-          { v: 2, t: '③ 꺼내어 눕히기' }, { v: 3, t: '④ 펼치기' },
-          { v: 4, t: '⑤ 층 분리' },
-        ], state.stage, 1)}
+        <div class="control">
+          <div class="clabel">분해 단계<br>(부품 클릭도 OK)</div>
+          <div class="cbody" style="display:flex;align-items:center;gap:8px">
+            <span id="stageNow" style="font-size:12px;color:#62718a;font-weight:700"></span>
+            <button class="opt on" id="stageNextBtn"></button>
+          </div>
+        </div>
         <div class="control">
           <div class="clabel">처음<br>상태로</div>
           <button class="power off" id="resetBtn">↻ 처음 상태로</button>
@@ -699,7 +706,12 @@ const StructScene = (() => {
     }, String);
 
     if (state.mode === 'peel') {
-      LabUI.bindOpts(root, 'stage', state, 'stage', onChange);
+      root.querySelector('#stageNextBtn').addEventListener('click', () => {
+        state.stage = state.stage < 4 ? state.stage + 1 : 0;
+        onChange();
+        syncStageButtons();
+      });
+      syncStageButtons();
       root.querySelector('#resetBtn').addEventListener('click', () => {
         state.stage = 0;
         root.innerHTML = controlsHTML();

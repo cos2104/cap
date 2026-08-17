@@ -1259,15 +1259,16 @@ const DeviceScene = (() => {
     ], state.mode, 1);
 
     if (state.mode === 'aed' || state.mode === 'flash') {
+      // 조작은 화면 속 기기의 3D 버튼으로 — 하단에는 안내만 남긴다
       return `
         ${modeBtns}
         <div class="control">
-          <div class="clabel">${state.mode === 'aed' ? '전원' : '충전'}</div>
-          <button class="power" id="chgBtn">${state.mode === 'aed' ? '⏻ 전원 (충전 시작)' : '⚡ 충전 시작'}</button>
-        </div>
-        <div class="control">
-          <div class="clabel">방전</div>
-          <button class="power off" id="disBtn">${state.mode === 'aed' ? '💥 심장 충격 (방전)' : '📸 셔터 (방전)'}</button>
+          <div class="clabel">조작 방법</div>
+          <div class="cbody" style="display:flex;align-items:center;font-size:12.5px;color:#41566f;line-height:1.5">
+            ${state.mode === 'aed'
+              ? '화면 속 기기의 <b>&nbsp;⏻ 전원&nbsp;</b>(충전)과 <b>&nbsp;⚡ 심장 충격&nbsp;</b>(방전) 버튼을 직접 클릭하세요'
+              : '화면 속 플래시의 <b>&nbsp;초록 버튼&nbsp;</b>(충전)과 <b>&nbsp;빨강 셔터&nbsp;</b>(방전)를 직접 클릭하세요'}
+          </div>
         </div>`;
     }
     if (state.mode === 'touch') {
@@ -1310,11 +1311,7 @@ const DeviceScene = (() => {
     }, String);
 
     if (state.mode === 'aed' || state.mode === 'flash') {
-      root.querySelector('#chgBtn').addEventListener('click', () => {
-        state.charging = true;
-        onChange();
-      });
-      root.querySelector('#disBtn').addEventListener('click', () => { discharge(); onChange(); });
+      // 충전·방전은 화면 속 3D 버튼(bindPointer)이 담당한다
     } else if (state.mode === 'touch') {
       LabUI.bindOpts(root, 'tool', state, 'tool', onChange, String);
       LabUI.bindOpts(root, 'explode', state, 'explode', () => { layoutTouchLayers(); onChange(); },

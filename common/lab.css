@@ -489,11 +489,24 @@ i { font-family: 'Times New Roman', serif; font-size: 1.12em; }
   .record-panel { bottom: 8px; right: 8px; width: min(322px, calc(100vw - 16px)); max-height: 42%; }
   .steps-panel { bottom: 8px; left: 8px; width: min(372px, calc(100vw - 16px)); }
   .steps-body { max-height: 118px; }
-  /* 접힌 패널은 머리줄만 남겨 폭을 줄인다 — 왼쪽 측정값 창과 겹치지 않게 */
-  .graph-panel.collapsed, .record-panel.collapsed, .steps-panel.collapsed { width: auto; max-width: 38vw; }
+  /* 접힌 패널은 «제목 + 펼치기 버튼»만 남긴다 — 자리 차지 최소화 */
+  .graph-panel.collapsed, .record-panel.collapsed, .steps-panel.collapsed { width: auto; max-width: 44vw; }
   .graph-head span:first-child, .record-head > span:first-child, .steps-head > span:first-child {
     overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0;
   }
+  .record-panel.collapsed .record-head .btns button:not(#recToggle) { display: none; }
+  .steps-panel.collapsed .steps-head .btns button:not(#stepToggle) { display: none; }
+  .steps-panel.collapsed #stepNo { display: none; }
+  .steps-head small { display: none; }
+  .graph-head, .record-head, .steps-head { padding: 6px 10px; }
+  /* 그래프는 측정값 칩 아래로 살짝 내려 겹침을 피한다 */
+  .graph-panel { top: 50px; }
+  /* 펼친 패널은 화면 폭을 쓰고 맨 위로 올라온다 (한 번에 하나만 펼쳐짐) */
+  .record-panel:not(.collapsed), .steps-panel:not(.collapsed) {
+    width: calc(100vw - 16px); z-index: 9;
+  }
+  .graph-panel:not(.collapsed) { z-index: 9; }
+  .readout:not(.collapsed) { z-index: 9; }
   .sidebar { overflow-x: auto; }
   .sidebar button { min-width: 42px; }
 
