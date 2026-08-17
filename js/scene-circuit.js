@@ -186,38 +186,26 @@ const CircuitScene = (() => {
   /** 전원 장치 — 앞면에 전압 표시창과 조절 다이얼이 있다 (다이얼 클릭으로도 전압 변경) */
   function buildBattery() {
     batteryG = new (B().TransformNode)('ckBatt', scene);
-    const holder = B().MeshBuilder.CreateBox('ckBattH', { width: 1.5, height: 0.5, depth: 2.6 }, scene);
-    holder.position.set(-3.5, 0.28, 1.2);
-    holder.material = mat('ckBattHM', '#20262f', '#5a6a80', 64);
-    holder.parent = batteryG;
-    // 본체
-    const body = B().MeshBuilder.CreateBox('ckPsu', { width: 1.15, height: 1.15, depth: 1.9 }, scene);
-    body.position.set(-3.5, 1.0, 1.2);
+    // 본체 — 받침 없이 작업판 위에 그대로 놓인다
+    const body = B().MeshBuilder.CreateBox('ckPsu', { width: 1.3, height: 1.2, depth: 1.9 }, scene);
+    body.position.set(-3.5, 0.64, 1.2);
     body.material = mat('ckCellM', '#39434f', '#8898ac', 96);
     body.parent = batteryG;
-    // 앞면 출력 단자 2개 (+ 오른쪽 · − 왼쪽) — 도선이 앞면에서 나온다
-    [[0.33, '#d0453a', 'P'], [-0.33, '#8a93a6', 'N']].forEach(([dx, hex, nm]) => {
-      const t2 = B().MeshBuilder.CreateCylinder('ckTerm' + nm, { height: 0.34, diameter: 0.2 }, scene);
+    // 앞면 출력 단자 2개 — 도선 높이(WY)에 맞춰 붙여, 도선이 단자에서 바로 나간다
+    [[0.36, '#d0453a', 'P'], [-0.36, '#8a93a6', 'N']].forEach(([dx, hex, nm]) => {
+      const t2 = B().MeshBuilder.CreateCylinder('ckTerm' + nm, { height: 0.36, diameter: 0.22 }, scene);
       t2.rotation.x = Math.PI / 2;
-      t2.position.set(-3.5 + dx, 0.62, 0.16);
+      t2.position.set(-3.5 + dx, WY, 0.07);
       t2.material = mat('ckTermM' + nm, hex, '#ffe8a0', 96);
       t2.parent = batteryG;
     });
-    signLabel('ckBattP', '+', '#d0453a', -3.17, 1.02, 0.0, 0.34, batteryG);
-    signLabel('ckBattN', '−', '#2f6ad0', -3.83, 1.02, 0.0, 0.34, batteryG);
-    // 단자 끝에서 바닥 도선으로 내려가는 짧은 연결선
-    [[-3.17, '#c0392b', 'P'], [-3.83, '#3c4756', 'N']].forEach(([x, hex, nm]) => {
-      const r2 = B().MeshBuilder.CreateCylinder('ckTermW' + nm, { height: 0.6, diameter: 0.08 }, scene);
-      r2.position.set(x, 0.32, 0.05);
-      r2.material = mat('ckTermWM' + nm, hex, '#f0a08a', 96);
-      r2.isPickable = false;
-      r2.parent = batteryG;
-    });
+    signLabel('ckBattP', '+', '#d0453a', -2.9, 0.42, 0.02, 0.32, batteryG);
+    signLabel('ckBattN', '−', '#2f6ad0', -4.1, 0.42, 0.02, 0.32, batteryG);
     // 앞면(카메라 쪽) 위쪽 패널 — 이름·전압 표시창 (아래쪽은 다이얼·단자 자리)
-    const face = B().MeshBuilder.CreatePlane('ckPsuFace', { width: 1.06, height: 0.66 }, scene);
-    face.position.set(-3.5, 1.22, 1.2 - 0.96);
+    const face = B().MeshBuilder.CreatePlane('ckPsuFace', { width: 1.16, height: 0.5 }, scene);
+    face.position.set(-3.5, 0.96, 1.2 - 0.96);
     face.isPickable = false;
-    const t = new (B().DynamicTexture)('ckPsuFaceT', { width: 212, height: 132 }, scene, true);
+    const t = new (B().DynamicTexture)('ckPsuFaceT', { width: 232, height: 100 }, scene, true);
     const m = new (B().StandardMaterial)('ckPsuFaceM', scene);
     m.diffuseTexture = t; m.emissiveTexture = t;
     m.emissiveColor = new (B().Color3)(0.95, 0.95, 0.95);
@@ -227,7 +215,7 @@ const CircuitScene = (() => {
     batteryG._lblTex = t;
     // 다이얼 손잡이 — 클릭하면 3 → 6 → 9V 순환 (앞면 가운데)
     const dialP = new (B().TransformNode)('ckDialP', scene);
-    dialP.position.set(-3.5, 0.66, 1.2 - 1.0);
+    dialP.position.set(-3.5, 0.58, 1.2 - 1.0);
     dialP.parent = batteryG;
     const dial = B().MeshBuilder.CreateCylinder('ckDial', { height: 0.14, diameter: 0.42 }, scene);
     dial.rotation.x = Math.PI / 2;
@@ -248,15 +236,15 @@ const CircuitScene = (() => {
     const t = batteryG._lblTex;
     const c = t.getContext();
     // 본체 색 배경 + 이름
-    c.fillStyle = '#39434f'; c.fillRect(0, 0, 212, 132);
+    c.fillStyle = '#39434f'; c.fillRect(0, 0, 232, 100);
     c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillStyle = '#c9d4e2'; c.font = 'bold 24px "Noto Sans KR", sans-serif';
-    c.fillText('전원 장치', 106, 24);
+    c.fillStyle = '#c9d4e2'; c.font = 'bold 21px "Noto Sans KR", sans-serif';
+    c.fillText('전원 장치', 116, 17);
     // 전압 표시창
-    c.fillStyle = '#101820'; c.fillRect(30, 46, 152, 70);
-    c.strokeStyle = '#5a6a80'; c.lineWidth = 3; c.strokeRect(30, 46, 152, 70);
-    c.fillStyle = '#5df08a'; c.font = 'bold 48px sans-serif';
-    c.fillText(`${state.volt.toFixed(0)} V`, 106, 82);
+    c.fillStyle = '#101820'; c.fillRect(46, 32, 140, 58);
+    c.strokeStyle = '#5a6a80'; c.lineWidth = 3; c.strokeRect(46, 32, 140, 58);
+    c.fillStyle = '#5df08a'; c.font = 'bold 42px sans-serif';
+    c.fillText(`${state.volt.toFixed(0)} V`, 116, 62);
     t.update();
     if (batteryG._dial) batteryG._dial.rotation.z = DIAL_ANG[state.volt] || 0;
   }
@@ -408,36 +396,15 @@ const CircuitScene = (() => {
     capLblTex.update();
   }
 
-  /** 같은 부호 전하는 서로 밀어내므로 판 전체에 고르게 퍼져 거리를 유지한다.
-      자리(슬롯)는 최대 개수 기준의 고정 격자를 가운데부터 바깥 순서로 채운다 —
-      전하가 늘어도 이미 있던 기호가 움직이지 않아 기준점이 바뀌는 느낌이 없다. */
-  let _chgSlots = null;
-  function chargeSlots(W2, H2) {
-    if (_chgSlots) return _chgSlots;
-    const N = 24;
-    const cols = Math.max(1, Math.round(Math.sqrt(N * W2 / H2)));
-    const rows = Math.ceil(N / cols);
-    const slots = [];
-    for (let r = 0; r < rows; r++) {
-      for (let k = 0; k < cols; k++) {
-        const x = W2 * (k + 1) / (cols + 1);
-        const y = H2 * (r + 1) / (rows + 1);
-        slots.push({ x, y, d: Math.hypot(x - W2 / 2, y - H2 / 2) });
-      }
-    }
-    slots.sort((a, b) => a.d - b.d);
-    _chgSlots = slots;
-    return slots;
-  }
-
+  /** 판 위 전하 — 같은 부호끼리 서로 밀어내고 판의 테두리도 밀어낸다.
+      가운데부터 채워지되, 수가 늘면 서로 밀며 자리를 넓혀 간다. */
   function drawChargesEven(c, W2, H2, n, sign) {
     if (n <= 0) return;
     c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillStyle = sign > 0 ? '#d0453a' : '#2f6ad0';
-    const slots = chargeSlots(W2, H2);
-    for (let i = 0; i < Math.min(n, slots.length); i++) {
-      c.fillText(sign > 0 ? '+' : '−', slots[i].x, slots[i].y);
-    }
+    LabUI.chargeLayout(W2, H2, n).forEach((p) => {
+      c.fillText(sign > 0 ? '+' : '−', p.x, p.y);
+    });
   }
 
   /** 판 위 전하 기호 — 개수가 Q = CV 에 비례 */
@@ -622,11 +589,11 @@ const CircuitScene = (() => {
   /* ── 도선 ──
      스위치의 접점 사이(A↔공통, 공통↔B)는 레버가 잇는 구간이므로 도선을 두지 않는다. */
   const PATH_CHG = [
-    [-3.17, 0.05], [-2.6, 0.05], [-2.6, 3.5], [-0.85, 3.5],
+    [-3.14, -0.11], [-2.6, -0.11], [-2.6, 3.5], [-0.85, 3.5],
     [0, 2.6],
     [0, 1.95], [0, -0.25],
     [0, -0.85],
-    [0, -2.4], [-3.83, -2.4], [-3.83, 0.05],
+    [0, -2.4], [-3.86, -2.4], [-3.86, -0.11],
   ];
   const PATH_DIS = [
     [0, -0.25], [0, 1.95],

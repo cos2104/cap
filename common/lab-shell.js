@@ -642,6 +642,55 @@ const LabUI = {
   },
 
   /** 버튼 묶음을 상태에 묶는다 */
+  /**
+   * 판 위 전하 배치 — 같은 부호끼리 «서로 밀어내고» 판의 테두리도 밀어낸다.
+   * 가운데부터 채우되 힘이 균형을 이룰 때까지 이완시켜, 뭉치지도 테두리에
+   * 몰리지도 않는 자연스러운 분포를 만든다. (개수마다 한 번만 계산해 캐시)
+   */
+  chargeLayout(W, H, n, margin) {
+    LabUI._chgCache = LabUI._chgCache || {};
+    const key = `${n}@${W}x${H}`;
+    if (LabUI._chgCache[key]) return LabUI._chgCache[key];
+    const M = margin || Math.min(W, H) * 0.13;
+    const x0 = M, x1 = W - M, y0 = M, y1 = H - M;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const pts = [];
+    const GA = Math.PI * (3 - Math.sqrt(5));       // 황금각 — 가운데부터 고르게 퍼진 씨앗
+    for (let i = 0; i < n; i++) {
+      const t = n === 1 ? 0 : Math.sqrt((i + 0.5) / n);
+      const a = i * GA;
+      pts.push({ x: cx + Math.cos(a) * t * (x1 - x0) / 2 * 0.92,
+                 y: cy + Math.sin(a) * t * (y1 - y0) / 2 * 0.92 });
+    }
+    const area = (x1 - x0) * (y1 - y0);
+    const sp = Math.sqrt(area / Math.max(1, n));    // 이웃 사이 목표 간격
+    const K = sp * sp * 0.9;                        // 전하 사이 척력 세기
+    const KW = K * 0.45;                            // 테두리가 밀어내는 힘 (전하보다 약하게)
+    const step = 0.34;
+    for (let it = 0; it < 160; it++) {
+      for (let i = 0; i < n; i++) {
+        let fx = 0, fy = 0;
+        for (let j = 0; j < n; j++) {
+          if (i === j) continue;
+          const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+          const d2 = Math.max(sp * sp * 0.04, dx * dx + dy * dy);
+          // 쿨롱 척력 — 크기 K/d² 를 «단위 방향»에 곱한다 (d³ 으로 나누는 까닭)
+          const f = K / (d2 * Math.sqrt(d2));
+          fx += dx * f; fy += dy * f;
+        }
+        const lim = sp * 0.35;
+        fx += KW / Math.pow(Math.max(lim, pts[i].x - x0), 2);
+        fx -= KW / Math.pow(Math.max(lim, x1 - pts[i].x), 2);
+        fy += KW / Math.pow(Math.max(lim, pts[i].y - y0), 2);
+        fy -= KW / Math.pow(Math.max(lim, y1 - pts[i].y), 2);
+        pts[i].x = Math.min(x1, Math.max(x0, pts[i].x + fx * step));
+        pts[i].y = Math.min(y1, Math.max(y0, pts[i].y + fy * step));
+      }
+    }
+    LabUI._chgCache[key] = pts;
+    return pts;
+  },
+
   bindOpts(root, dataKey, state, key, onChange, cast = parseFloat) {
     const sel = `[data-${dataKey}]`;
     root.querySelectorAll(sel).forEach((b) => b.addEventListener('click', () => {

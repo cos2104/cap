@@ -537,20 +537,14 @@ const StructScene = (() => {
       c.font = 'bold 32px sans-serif';
       c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillStyle = sign > 0 ? '#d0453a' : '#2f6ad0';
-      const cols = Math.max(1, Math.round(Math.sqrt(n)));
-      const rows = Math.ceil(n / cols);
-      let i = 0;
-      for (let r = 0; r < rows && i < n; r++) {
-        const inRow = Math.min(cols, n - r * cols);
-        for (let k = 0; k < inRow; k++, i++) {
-          // 판이 가로로 늘어나므로 글자는 x 방향으로 눌러 그려 동그란 모양을 유지한다
-          c.save();
-          c.translate(250 * (k + 1) / (inRow + 1), 250 * (r + 1) / (rows + 1));
-          c.scale(1 / WIDE, 1);
-          c.fillText(sign > 0 ? '+' : '−', 0, 0);
-          c.restore();
-        }
-      }
+      // 서로 밀어내는 배치 — 판이 가로로 늘어난 만큼 가로를 넓게 잡아 계산한다
+      LabUI.chargeLayout(Math.round(250 * WIDE), 250, n).forEach((p) => {
+        c.save();
+        c.translate(p.x / WIDE, p.y);
+        c.scale(1 / WIDE, 1);
+        c.fillText(sign > 0 ? '+' : '−', 0, 0);
+        c.restore();
+      });
       tex.update();
     };
     draw(bTexA, +1);

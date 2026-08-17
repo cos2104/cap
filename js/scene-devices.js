@@ -473,18 +473,31 @@ const DeviceScene = (() => {
     lens.position.set(-0.5, 1.05, -0.85);
     lens.material = mat('flLensM', '#101820', '#a0c0e0', 128);
     lens.parent = flashG;
-    // ① AA 전지 2개
-    [[-1.3, 0.18], [-1.0, -0.06]].forEach(([x, dz], i) => {
+    // ① AA 전지 2개 — 직렬로 맞붙여 놓는다 (한 전지의 + 가 다음 전지의 − 에 닿는다)
+    [[-1.55, 0.52], [-1.55, -0.52]].forEach(([x, z0], i) => {
       const c = B().MeshBuilder.CreateCylinder('flCell' + i, { height: 1.0, diameter: 0.3 }, scene);
-      c.position.set(x, 0.72, 0.3 + dz);
+      c.rotation.x = Math.PI / 2;
+      c.position.set(x, 0.72, z0);
       c.material = mat('flCellM' + i, '#d8b44a', '#ffe8a0', 96);
       c.parent = flashG;
+      // 전지의 + 꼭지 (앞쪽 −z 방향)
+      const cap0 = B().MeshBuilder.CreateCylinder('flCellP' + i, { height: 0.08, diameter: 0.14 }, scene);
+      cap0.rotation.x = Math.PI / 2;
+      cap0.position.set(x, 0.72, z0 - 0.54);
+      cap0.material = mat('flCellPM' + i, '#c0b090', '#ffe8a0', 96);
+      cap0.parent = flashG;
     });
+    // 두 전지를 잇는 접속판 (뒤 전지의 + ↔ 앞 전지의 − 를 잇는다)
+    const bridge = B().MeshBuilder.CreateCylinder('flCellBr', { height: 0.06, diameter: 0.3 }, scene);
+    bridge.rotation.x = Math.PI / 2;
+    bridge.position.set(-1.55, 0.72, 0.0);
+    bridge.material = mat('flCellBrM', '#9aa7b8', '#e0e8f0', 96);
+    bridge.parent = flashG;
     const bl = label('flBatL', '전지 (AA×2) — 에너지 공급', 3.0, 0.36, 22, '#3c4756');
-    bl.position.set(-1.15, 1.55, 0.3);
+    bl.position.set(-1.55, 1.55, 0.0);
     bl.parent = flashG;
-    sign('flBatP', '+', '#ff8a7a', -1.42, 1.32, 0.48, flashG, 0.2);
-    sign('flBatN', '−', '#7ab0ff', -0.88, 1.32, 0.06, flashG, 0.2);
+    sign('flBatP', '+', '#ff8a7a', -1.55, 1.16, -1.12, flashG, 0.22);
+    sign('flBatN', '−', '#7ab0ff', -1.55, 1.16, 1.08, flashG, 0.22);
     // ② 승압 회로
     block('flConv', flashG, -0.25, 0.68, 0.3, 0.7, 0.35, 0.55, '#2c6a3c', '승압 회로\n1.5 V 를 수백 V 로 높인다');
     // ③ 축전기 (단자 2개)
@@ -529,11 +542,11 @@ const DeviceScene = (() => {
     btnHint.parent = flashG;
     // 충전 폐회로: 전지+ → (승압 회로 속을 지나) → 축전기(+) / (−) → 전지−
     FL_CHG = [
-      [-1.42, 1.25, 0.48], [-1.42, 1.62, 0.3], [-0.85, 1.62, 0.3],
+      [-1.55, 0.72, -1.08], [-1.42, 1.62, -0.6], [-0.85, 1.62, 0.3],
       [-0.68, 1.1, 0.3], [-0.68, 0.7, 0.3],
       [0.08, 0.7, 0.35],
       [0.5, 1.1, 0.45], leads.posP,
-      leads.posN, [1.35, 1.41, 0.5], [1.35, 0.16, 0.35], [-0.88, 0.16, 0.1], [-0.88, 1.2, 0.06],
+      leads.posN, [1.35, 1.41, 0.5], [1.35, 0.16, 0.35], [-1.55, 0.16, 1.04], [-1.55, 0.72, 1.03],
     ];
     wire3(FL_CHG.slice(0, 8), flashG, 'flWc', '#c0392b');
     wire3(FL_CHG.slice(8), flashG, 'flWr', '#3c4756');
@@ -562,14 +575,15 @@ const DeviceScene = (() => {
   /* ── 터치스크린 ────────────────────────────── */
   function buildTouch() {
     touchG = new (B().TransformNode)('dvTouch', scene);
-    // 층 4겹 — 테두리 색으로 구별, 층 벌려 보기로 하나씩 확인 가능
+    // 층 5겹 — 교과서 그림과 같은 차례: 유리 · 투명 전극 · 유리 · 투명 전극 · 디스플레이
     const layers = [
-      ['유리', '#bcd8e8', 0.55, -0.30, '#2f7fd6'],
-      ['투명 전극', '#7fc8a8', 0.5, -0.18, '#1d8a5c'],
-      ['투명 전극', '#7fc8a8', 0.5, -0.10, '#1d8a5c'],
-      ['디스플레이 화면', '#39424f', 1, 0.05, '#8a97a5'],
+      ['유리', '#bcd8e8', 0.5, -0.34, '#2f7fd6'],
+      ['투명 전극', '#7fc8a8', 0.5, -0.24, '#1d8a5c'],
+      ['유리', '#bcd8e8', 0.5, -0.14, '#2f7fd6'],
+      ['투명 전극', '#7fc8a8', 0.5, -0.04, '#1d8a5c'],
+      ['디스플레이 화면', '#39424f', 1, 0.08, '#8a97a5'],
     ];
-    const EXPLODE_Z = [-1.7, -0.8, 0.1, 1.0];
+    const EXPLODE_Z = [-2.0, -1.1, -0.2, 0.7, 1.6];
     touchLayers = layers.map(([nm, hex, alpha, z, edge], i) => {
       const l = B().MeshBuilder.CreateBox('tsL' + i, { width: 6.2, height: 3.6, depth: 0.05 }, scene);
       l.position.set(0, 2.2, z);
@@ -583,13 +597,13 @@ const DeviceScene = (() => {
       const ec = B().Color3.FromHexString(edge);
       l.edgesColor = new (B().Color4)(ec.r, ec.g, ec.b, 0.95);
       const ll = label('tsLL' + i, nm, 2.0, 0.36, 24, '#3c5568');
-      ll.position.set(3.9 + (i % 2) * 0.1, 3.7 - i * 0.55, z);
+      ll.position.set(3.9 + (i % 2) * 0.1, 3.9 - i * 0.5, z);
       ll.billboardMode = 0;
       ll.parent = touchG;
       return { mesh: l, lbl: ll, z0: z, zx: EXPLODE_Z[i] };
     });
     touchScreen = B().MeshBuilder.CreatePlane('tsScreen', { width: 6.0, height: 3.4 }, scene);
-    touchScreen.position.set(0, 2.2, -0.36);
+    touchScreen.position.set(0, 2.2, -0.40);
     touchTex = new (B().DynamicTexture)('tsTex', { width: 720, height: 408 }, scene, true);
     const m = new (B().StandardMaterial)('tsScreenM', scene);
     m.diffuseTexture = touchTex; m.emissiveTexture = touchTex;
@@ -760,15 +774,19 @@ const DeviceScene = (() => {
   };
   REPAIR.touch = {
     title: '의뢰 ③  "터치 패널이 통째로 분해되어 왔어요"',
-    prompt: '앞(손가락 쪽)부터 순서대로 부품을 골라 조립하세요',
-    parts: [['tglass', '유리판'], ['telec', '투명 전극 2장'], ['tdisp', '디스플레이 화면']],
-    order: ['tglass', 'telec', 'tdisp'],
-    stageHint: ['맨 앞(손가락이 닿는 쪽)은 긁힘을 막는 유리판이에요.',
-                '유리 뒤에는 낮은 전압으로 전하를 퍼뜨릴 투명 전극 2장이 와요.',
+    prompt: '앞(손가락 쪽)부터 교과서 차례대로 5겹을 조립하세요',
+    parts: [['tglass', '유리'], ['telec', '투명 전극'], ['tdisp', '디스플레이']],
+    order: ['tglass', 'telec', 'tglass', 'telec', 'tdisp'],
+    stageHint: ['맨 앞(손가락이 닿는 쪽)은 긁힘을 막는 유리예요.',
+                '유리 뒤에는 낮은 전압으로 전하를 퍼뜨릴 투명 전극이 와요.',
+                '전극 뒤에 다시 유리가 들어가 두 전극을 떼어 놓아요.',
+                '그 뒤에 두 번째 투명 전극이 와요.',
                 '맨 뒤에는 그림을 보여 줄 디스플레이 화면이 와요.'],
-    okStage: ['유리판 장착! 다음 부품은 무엇일까요?',
-              '투명 전극 2장 장착! 마지막 부품은?',
-              '디스플레이 장착 — 조립 완료! 이제 번호판을 터치해 보세요.'],
+    okStage: ['① 유리 장착! 다음 차례는?',
+              '② 투명 전극 장착! 다음 차례는?',
+              '③ 유리 장착! 다음 차례는?',
+              '④ 투명 전극 장착! 마지막 부품은?',
+              '⑤ 디스플레이 장착 — 조립 완료! 이제 번호판을 터치해 보세요.'],
   };
   const REPAIR_PREFIX = { aed: ['aedCap'], flash: ['flCap'], humid: ['hmLayer'] };
 
@@ -865,17 +883,12 @@ const DeviceScene = (() => {
   function setTouchAsm(n) {
     state._touchAsm = n;
     if (!touchLayers.length) return;
-    touchLayers[0].mesh.setEnabled(n >= 1); touchLayers[0].lbl.setEnabled(n >= 1);
-    touchLayers[1].mesh.setEnabled(n >= 2); touchLayers[1].lbl.setEnabled(n >= 2);
-    touchLayers[2].mesh.setEnabled(n >= 2); touchLayers[2].lbl.setEnabled(n >= 2);
-    touchLayers[3].mesh.setEnabled(n >= 3); touchLayers[3].lbl.setEnabled(n >= 3);
-    if (touchScreen) touchScreen.setEnabled(n >= 3);
-    REPAIR.touch.order.forEach((k, i) => {
-      const pg = scene.getTransformNodeByName('rp_touch_' + k);
-      if (pg) pg.setEnabled(i >= n);
-      const pl = scene.getMeshByName('rpL_touch_' + k);
-      if (pl) pl.setEnabled(i >= n);
+    touchLayers.forEach((L, i) => {
+      L.mesh.setEnabled(n >= i + 1);
+      L.lbl.setEnabled(n >= i + 1);
     });
+    // 번호판 화면은 5겹을 모두 끼운 뒤에만 나타난다
+    if (touchScreen) touchScreen.setEnabled(n >= REPAIR.touch.order.length && !state.explode);
   }
 
   function handleRepair(md) {
@@ -932,12 +945,12 @@ const DeviceScene = (() => {
     // 빈 자리(주황 점선) 표시 — 여기로 부품을 끌어다 놓는다
     const slotGhost = (key, mesh2, txt, ly) => {
       const m0 = mat('rpSlotM_' + key, '#e0a23a');
-      m0.alpha = 0.16;
+      m0.alpha = 0.07;
       mesh2.material = m0;
       mesh2.isPickable = false;
       mesh2.enableEdgesRendering();
-      mesh2.edgesWidth = 3.5;
-      mesh2.edgesColor = new (B().Color4)(0.92, 0.63, 0.2, 0.95);
+      mesh2.edgesWidth = 2.5;
+      mesh2.edgesColor = new (B().Color4)(0.92, 0.63, 0.2, 0.5);
       const l0 = label('rpSlotL_' + key, txt, 3.4, 0.42, 24, '#b05820');
       l0.position.copyFrom(mesh2.position);
       l0.position.y = ly;
@@ -957,6 +970,36 @@ const DeviceScene = (() => {
     sH.position.set(0, 1.5, 0);
     sH.parent = humidG;
     slotGhost('humid', sH, '감지층 자리 — 끌어다 놓기', 3.0);
+    // 손가락 / 지우개 — 터치한 자리에 잠깐 나타났다 사라진다
+    const fg = new (B().TransformNode)('tsFinger', scene);
+    fg.parent = touchG;
+    const fTip = B().MeshBuilder.CreateSphere('tsFingerTip', { diameter: 0.42 }, scene);
+    fTip.position.set(0, 0, -0.24);
+    fTip.material = mat('tsFingerTipM', '#f0c8a8', '#fff0e0', 64);
+    fTip.isPickable = false;
+    fTip.parent = fg;
+    const fBody = B().MeshBuilder.CreateCylinder('tsFingerBody', { height: 1.5, diameter: 0.38 }, scene);
+    fBody.rotation.x = Math.PI / 2.6;
+    fBody.position.set(0.12, 0.62, -0.78);
+    fBody.material = mat('tsFingerBodyM', '#f0c8a8', '#fff0e0', 64);
+    fBody.isPickable = false;
+    fBody.parent = fg;
+    fg.setEnabled(false);
+    touchG._finger = fg;
+    const eg = new (B().TransformNode)('tsEraser', scene);
+    eg.parent = touchG;
+    const eBox = B().MeshBuilder.CreateBox('tsEraserBox', { width: 0.75, height: 0.36, depth: 0.42 }, scene);
+    eBox.position.set(0, 0, -0.32);
+    eBox.material = mat('tsEraserBoxM', '#e8e0d0', '#fff8f0', 32);
+    eBox.isPickable = false;
+    eBox.parent = eg;
+    const eBand = B().MeshBuilder.CreateBox('tsEraserBand', { width: 0.78, height: 0.14, depth: 0.44 }, scene);
+    eBand.position.set(0, 0.12, -0.32);
+    eBand.material = mat('tsEraserBandM', '#5a7fc0', '#c8d8f0', 32);
+    eBand.isPickable = false;
+    eBand.parent = eg;
+    eg.setEnabled(false);
+    touchG._eraser = eg;
     // 터치 — 조립 틀 (층·화면은 조립 순서대로 나타난다)
     const sT = B().MeshBuilder.CreateBox('rpSlot_touch', { width: 6.4, height: 3.8, depth: 0.7 }, scene);
     sT.position.set(0, 2.2, -0.12);
@@ -1052,6 +1095,16 @@ const DeviceScene = (() => {
         const px = uv.x * 720, py = (1 - uv.y) * 408;
         const col = Math.max(0, Math.min(GRID_W - 1, Math.floor(uv.x * GRID_W)));
         const r = Math.max(0, Math.min(GRID_H - 1, Math.floor((1 - uv.y) * GRID_H)));
+        // 누른 자리에 손가락(또는 지우개)이 나타났다가 사라진다
+        const tx = (uv.x - 0.5) * 6.0, ty = 2.2 + (uv.y - 0.5) * 3.4;
+        const hand = state.tool === 'finger' ? touchG._finger : touchG._eraser;
+        const other = state.tool === 'finger' ? touchG._eraser : touchG._finger;
+        if (other) other.setEnabled(false);
+        if (hand) {
+          hand.position.set(tx, ty, -0.45);
+          hand.setEnabled(true);
+          state._handT = 0.9;
+        }
         if (state.tool === 'finger') {
           state.removed[col + ',' + r] = RESTORE_T;
           const digit = dialAt(px, py);
@@ -1263,18 +1316,18 @@ const DeviceScene = (() => {
     [[-3.2, '충전·방전 이용', '#b05820', '#c8a86a'], [3.2, '전하량 변화 이용', '#20648a', '#8ab4c8']]
       .forEach(([x, nm, col, hex], i) => {
         const sh = B().MeshBuilder.CreateBox('srtShelf' + i, { width: 4.6, height: 0.2, depth: 3.2 }, scene);
-        sh.position.set(x, 0.6, 0.9);
+        sh.position.set(x, 0.6, 0.1);
         sh.material = mat('srtShelfM' + i, hex, '#f0e0c0', 48);
         sh.isPickable = false;
         sh.parent = sortG;
         // 이름표를 뒤판에 고정 (빌보드 아님 — 돌려 봐도 판에 붙어 있다)
         const board = B().MeshBuilder.CreateBox('srtBoard' + i, { width: 4.6, height: 1.2, depth: 0.16 }, scene);
-        board.position.set(x, 1.3, 2.62);
+        board.position.set(x, 1.3, 1.72);
         board.material = mat('srtBoardM' + i, hex, '#f0e0c0', 48);
         board.isPickable = false;
         board.parent = sortG;
         const face = B().MeshBuilder.CreatePlane('srtBoardL' + i, { width: 4.3, height: 1.0 }, scene);
-        face.position.set(x, 1.3, 2.53);
+        face.position.set(x, 1.3, 1.63);
         const t2 = new (B().DynamicTexture)('srtBoardLT' + i, { width: 560, height: 130 }, scene, true);
         const c2 = t2.getContext();
         c2.clearRect(0, 0, 560, 130);
@@ -1409,7 +1462,7 @@ const DeviceScene = (() => {
       if (!s) { g.position.copyFrom(g._home); return; }
       const idx = slots2[s].length;
       slots2[s].push(key);
-      g.position.set((s === 'cd' ? -3.2 : 3.2) + (idx - 0.5) * 1.9, 0.7, -1.2);
+      g.position.set((s === 'cd' ? -3.2 : 3.2) + (idx - 0.5) * 1.9, 0.7, -0.2);
     });
     sortCert.setEnabled(sortScore() === 4);
   }
@@ -1423,6 +1476,8 @@ const DeviceScene = (() => {
     state.removed = {}; state.ripples = []; state.dialed = ''; state.explode = false;
     touchSparks.forEach((p) => p.m.dispose());
     touchSparks = [];
+    state._handT = 0;
+    if (touchG && touchG._finger) { touchG._finger.setEnabled(false); touchG._eraser.setEnabled(false); }
     state.humid = 45;
     state.sorted = { aed: 0, flash: 0, touch: 0, humid: 0 };
     state.repaired = { aed: false, flash: false, touch: false, humid: false };
@@ -1452,8 +1507,10 @@ const DeviceScene = (() => {
       L2.mesh.position.z = z;
       L2.lbl.position.z = z;
     });
-    // 벌려 보기 중에는 전하 화면을 잠시 감춰 층 구조에 집중
-    touchScreen.setEnabled(!state.explode);
+    // 조립이 끝난 뒤에만 화면을 보여 주고, 벌려 보기 중에는 층 구조에 집중
+    const done = (state._touchAsm || 0) >= REPAIR.touch.order.length;
+    touchScreen.setEnabled(done && !state.explode);
+    touchScreen.position.z = state.explode ? touchLayers[4].zx - 0.06 : -0.40;
   }
 
   function layout() {
@@ -1482,6 +1539,14 @@ const DeviceScene = (() => {
 
   function tick(dt) {
     let dirty = false;
+    if (state._handT > 0) {
+      state._handT = Math.max(0, state._handT - dt);
+      if (state._handT === 0) {
+        if (touchG._finger) touchG._finger.setEnabled(false);
+        if (touchG._eraser) touchG._eraser.setEnabled(false);
+      }
+      dirty = true;
+    }
     if ((state.mode === 'aed' || state.mode === 'flash') && state.charging && state.gauge < 100) {
       state.gauge = Math.min(100, state.gauge + dt * (state.mode === 'aed' ? 33 : 50));
       if (state.gauge >= 100) state.charging = false;
