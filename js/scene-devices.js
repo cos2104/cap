@@ -722,6 +722,7 @@ const DeviceScene = (() => {
 
   /* ── 수리 의뢰(스토리) — 기기마다 고장 원인을 찾아 알맞은 부품으로 고쳐야 작동한다 ── */
   let repairBuilt = false;
+  let dragRp = null;     // 수리 부품 끌기 상태
   const REPAIR = {
     aed: {
       title: '의뢰 ①  "심장 충격기가 충전되지 않아요"',
@@ -757,6 +758,18 @@ const DeviceScene = (() => {
       ok: '흡습층 장착, 수리 완료! 습도 슬라이더를 움직여 보세요.',
     },
   };
+  REPAIR.touch = {
+    title: '의뢰 ③  "터치 패널이 통째로 분해되어 왔어요"',
+    prompt: '앞(손가락 쪽)부터 순서대로 부품을 골라 조립하세요',
+    parts: [['tglass', '유리판'], ['telec', '투명 전극 2장'], ['tdisp', '디스플레이 화면']],
+    order: ['tglass', 'telec', 'tdisp'],
+    stageHint: ['맨 앞(손가락이 닿는 쪽)은 긁힘을 막는 유리판이에요.',
+                '유리 뒤에는 낮은 전압으로 전하를 퍼뜨릴 투명 전극 2장이 와요.',
+                '맨 뒤에는 그림을 보여 줄 디스플레이 화면이 와요.'],
+    okStage: ['유리판 장착! 다음 부품은 무엇일까요?',
+              '투명 전극 2장 장착! 마지막 부품은?',
+              '디스플레이 장착 — 조립 완료! 이제 번호판을 터치해 보세요.'],
+  };
   const REPAIR_PREFIX = { aed: ['aedCap'], flash: ['flCap'], humid: ['hmLayer'] };
 
   /** 후보 부품 모형 — 저항 / 코일 / 축전기(용량별 크기) / 판(금속·유리·흡습층) */
@@ -778,6 +791,20 @@ const DeviceScene = (() => {
         const t = add(B().MeshBuilder.CreateTorus(nm + 't' + i, { diameter: 0.42, thickness: 0.08 }, scene));
         t.position.y = 0.1 + i * 0.1;
         t.material = mat(nm + 'tM' + i, '#c07830', '#ffd8a0', 96);
+      }
+    } else if (kind === 'tglass' || kind === 'telec' || kind === 'tdisp') {
+      const hex = kind === 'tglass' ? '#bcd8e8' : kind === 'telec' ? '#7fc8a8' : '#39424f';
+      const b = add(B().MeshBuilder.CreateBox(nm + 'b', { width: 1.35, height: 0.85, depth: 0.07 }, scene));
+      b.position.y = 0.46;
+      const m2 = mat(nm + 'bM', hex);
+      if (kind !== 'tdisp') m2.alpha = 0.6;
+      b.material = m2;
+      if (kind === 'telec') {
+        const b2 = add(B().MeshBuilder.CreateBox(nm + 'b2', { width: 1.35, height: 0.85, depth: 0.07 }, scene));
+        b2.position.set(0, 0.46, 0.16);
+        const m3 = mat(nm + 'b2M', hex);
+        m3.alpha = 0.6;
+        b2.material = m3;
       }
     } else if (kind === 'metal' || kind === 'glass' || kind === 'poly') {
       const b = add(B().MeshBuilder.CreateBox(nm + 'b', { width: 0.55, height: 0.8, depth: 0.5 }, scene));
@@ -829,20 +856,48 @@ const DeviceScene = (() => {
     });
     const shelf = scene.getTransformNodeByName('rpShelf_' + key);
     if (shelf) shelf.setEnabled(!on);
+    const slot = scene.getMeshByName('rpSlot_' + key);
+    if (slot) { slot.setEnabled(!on); if (slot._lbl) slot._lbl.setEnabled(!on); }
     if (key === 'humid' && humidG) layoutHumid();
+  }
+
+  /** 터치 패널 조립 진행 표시 — n 층까지 끼워졌다 (0=빈 틀, 3=완성) */
+  function setTouchAsm(n) {
+    state._touchAsm = n;
+    if (!touchLayers.length) return;
+    touchLayers[0].mesh.setEnabled(n >= 1); touchLayers[0].lbl.setEnabled(n >= 1);
+    touchLayers[1].mesh.setEnabled(n >= 2); touchLayers[1].lbl.setEnabled(n >= 2);
+    touchLayers[2].mesh.setEnabled(n >= 2); touchLayers[2].lbl.setEnabled(n >= 2);
+    touchLayers[3].mesh.setEnabled(n >= 3); touchLayers[3].lbl.setEnabled(n >= 3);
+    if (touchScreen) touchScreen.setEnabled(n >= 3);
+    REPAIR.touch.order.forEach((k, i) => {
+      const pg = scene.getTransformNodeByName('rp_touch_' + k);
+      if (pg) pg.setEnabled(i >= n);
+      const pl = scene.getMeshByName('rpL_touch_' + k);
+      if (pl) pl.setEnabled(i >= n);
+    });
   }
 
   function handleRepair(md) {
     const key = md.rp;
     if (key === 'touch') {
       if (state.repaired.touch) return;
-      state.repaired.touch = true;
-      const w = scene.getMeshByName('tsW11');
-      if (w) w.setEnabled(true);
-      if (touchG._fixLbl) touchG._fixLbl.setEnabled(false);
-      if (touchG._fixBall) touchG._fixBall.setEnabled(false);
-      Lab.showHint('도선을 이었습니다, 수리 완료! 이제 번호판을 터치해 보세요.', true);
-      Lab.refresh();
+      const R = REPAIR.touch;
+      const n = state._touchAsm || 0;
+      if (md.part === R.order[n]) {
+        setTouchAsm(n + 1);
+        if (n + 1 >= R.order.length) {
+          state.repaired.touch = true;
+          const slot = scene.getMeshByName('rpSlot_touch');
+          if (slot) { slot.setEnabled(false); if (slot._lbl) slot._lbl.setEnabled(false); }
+          const shelf = scene.getTransformNodeByName('rpShelf_touch');
+          if (shelf) shelf.setEnabled(false);
+        }
+        Lab.showHint(R.okStage[n], true);
+        Lab.refresh();
+      } else {
+        Lab.showHint(R.stageHint[n]);
+      }
       return;
     }
     const R = REPAIR[key];
@@ -869,25 +924,47 @@ const DeviceScene = (() => {
       h.material = emat(nm + 'M', '#ffffff', 0.02);
       h.parent = s0.parent;
     });
-    buildShelf('aed', aedG, 1.05, 0, 2.6, 1);
-    buildShelf('flash', flashG, -0.4, 0, 1.9, 0.85);
-    buildShelf('humid', humidG, 0.4, 0, 2.9, 0.9);
-    // 터치스크린 — 구동 회로에서 전극으로 가는 도선이 끊겨 있다: ✕ 를 클릭해 잇는다
-    const card = label('rpCard_touch',
-      '의뢰 ③  "화면이 터치에 반응하지 않아요"\n붉은 ✕ (끊어진 도선)를 클릭해 이으세요', 6.4, 0.86, 26, '#b03a28');
-    card.position.set(-2.6, 5.0, 0);
-    card.parent = touchG;
-    touchG._fixLbl = card;
-    const fxBall = B().MeshBuilder.CreateSphere('rp_touchfix', { diameter: 0.32 }, scene);
-    fxBall.position.set(-0.8, 1.4, -0.18);
-    fxBall.material = emat('rp_touchfixM', '#e04a3a', 0.92);
-    fxBall.parent = touchG;
-    fxBall.metadata = { rp: 'touch', part: 'fix' };
-    touchG._fixBall = fxBall;
-    const w = scene.getMeshByName('tsW11');
-    if (w) w.setEnabled(false);
+    // 부품 선반은 모두 기기 «앞»(카메라 쪽, −z)에 — 바로 보이고 끌기 쉽게
+    buildShelf('aed', aedG, -0.6, 0, -3.1, 1);
+    buildShelf('flash', flashG, 0, 0, -2.5, 0.85);
+    buildShelf('humid', humidG, 0.3, 0, -3.1, 0.9);
+    buildShelf('touch', touchG, 0, 0, -3.2, 0.95);
+    // 빈 자리(주황 점선) 표시 — 여기로 부품을 끌어다 놓는다
+    const slotGhost = (key, mesh2, txt, ly) => {
+      const m0 = mat('rpSlotM_' + key, '#e0a23a');
+      m0.alpha = 0.16;
+      mesh2.material = m0;
+      mesh2.isPickable = false;
+      mesh2.enableEdgesRendering();
+      mesh2.edgesWidth = 3.5;
+      mesh2.edgesColor = new (B().Color4)(0.92, 0.63, 0.2, 0.95);
+      const l0 = label('rpSlotL_' + key, txt, 3.4, 0.42, 24, '#b05820');
+      l0.position.copyFrom(mesh2.position);
+      l0.position.y = ly;
+      l0.parent = mesh2.parent;
+      mesh2._lbl = l0;
+      return mesh2;
+    };
+    const sA = B().MeshBuilder.CreateCylinder('rpSlot_aed', { height: 1.35, diameter: 0.95 }, scene);
+    sA.position.set(-0.85, 0.9, 0);
+    sA.parent = aedG;
+    slotGhost('aed', sA, '축전기 자리 — 끌어다 놓기', 1.95);
+    const sF = B().MeshBuilder.CreateCylinder('rpSlot_flash', { height: 1.05, diameter: 0.72 }, scene);
+    sF.position.set(0.78, 0.7, 0.5);
+    sF.parent = flashG;
+    slotGhost('flash', sF, '축전기 자리 — 끌어다 놓기', 1.45);
+    const sH = B().MeshBuilder.CreateBox('rpSlot_humid', { width: 1.6, height: 2.1, depth: 1.7 }, scene);
+    sH.position.set(0, 1.5, 0);
+    sH.parent = humidG;
+    slotGhost('humid', sH, '감지층 자리 — 끌어다 놓기', 3.0);
+    // 터치 — 조립 틀 (층·화면은 조립 순서대로 나타난다)
+    const sT = B().MeshBuilder.CreateBox('rpSlot_touch', { width: 6.4, height: 3.8, depth: 0.7 }, scene);
+    sT.position.set(0, 2.2, -0.12);
+    sT.parent = touchG;
+    slotGhost('touch', sT, '① 유리 → ② 투명 전극 → ③ 화면 순서로 조립!', 4.5);
     repairBuilt = true;
     ['aed', 'flash', 'humid'].forEach((k) => setRepairVisual(k, false));
+    setTouchAsm(0);
   }
 
   /** 탐구 수행 단계 자동 진행 조건 (content.steps.devices 와 1:1) */
@@ -902,11 +979,44 @@ const DeviceScene = (() => {
   /* ── 포인터 — 기기 버튼 클릭 + 터치 체험 + 분류 게임 드래그 ── */
   function bindPointer(canvas) {
     scene.onPointerObservable.add((info) => {
-      // 수리(부품 선택·도선 잇기) — 어떤 기기 화면에서든 가장 먼저 확인
+      // 수리 부품 — 끌어서 기기의 빈 자리(주황 표시)에 놓는다. 제자리 클릭도 선택으로 인정
       if (info.type === B().PointerEventTypes.POINTERDOWN) {
         const pk0 = info.pickInfo;
         const md = pk0 && pk0.hit && pk0.pickedMesh && pk0.pickedMesh.metadata;
-        if (md && md.rp) { handleRepair(md); return; }
+        if (md && md.rp) {
+          const node = scene.getTransformNodeByName('rp_' + md.rp + '_' + md.part);
+          if (!node) { handleRepair(md); return; }
+          dragRp = { key: md.rp, part: md.part, node, home: node.position.clone(), moved: false };
+          camera.detachControl(canvasRef);
+          return;
+        }
+      }
+      if (dragRp && info.type === B().PointerEventTypes.POINTERMOVE) {
+        const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, B().Matrix.Identity(), camera);
+        const plane = B().Plane.FromPositionAndNormal(B().Vector3.Zero(), new (B().Vector3)(0, 1, 0));
+        const d = ray.intersectsPlane(plane);
+        if (d !== null) {
+          const p = ray.origin.add(ray.direction.scale(d));
+          dragRp.node.setAbsolutePosition(new (B().Vector3)(p.x, 0.4, p.z));
+          dragRp.moved = true;
+        }
+        return;
+      }
+      if (dragRp && info.type === B().PointerEventTypes.POINTERUP) {
+        const dr = dragRp;
+        dragRp = null;
+        camera.attachControl(canvasRef, true);
+        const slot = scene.getMeshByName('rpSlot_' + dr.key);
+        let nearSlot = !dr.moved;
+        if (dr.moved && slot) {
+          const a = dr.node.getAbsolutePosition();
+          const b2 = slot.getAbsolutePosition();
+          nearSlot = Math.hypot(a.x - b2.x, a.z - b2.z) < 2.4;
+        }
+        dr.node.position.copyFrom(dr.home);
+        if (nearSlot) handleRepair({ rp: dr.key, part: dr.part });
+        else Lab.showHint('기기의 빈 자리(주황 표시)에 끌어다 놓아 보세요.');
+        return;
       }
       // 기기의 3D 버튼을 직접 클릭 (전원=충전 · ⚡/셔터=방전)
       // 얇은 버튼 옆면에서도 클릭되도록 투명 픽 프록시(…Hit…)도 함께 받는다
@@ -934,7 +1044,7 @@ const DeviceScene = (() => {
         const pick = info.pickInfo;
         if (!pick || !pick.hit || pick.pickedMesh !== touchScreen) return;
         if (!state.repaired.touch) {
-          Lab.showHint('화면이 반응하지 않아요 — 붉은 ✕ 지점(끊어진 도선)을 클릭해 이어 주세요.');
+          Lab.showHint('아직 조립 전이에요 — 앞의 부품을 순서대로 끼워 패널을 완성하세요.');
           return;
         }
         const uv = pick.getTextureCoordinates();
@@ -1153,18 +1263,18 @@ const DeviceScene = (() => {
     [[-3.2, '충전·방전 이용', '#b05820', '#c8a86a'], [3.2, '전하량 변화 이용', '#20648a', '#8ab4c8']]
       .forEach(([x, nm, col, hex], i) => {
         const sh = B().MeshBuilder.CreateBox('srtShelf' + i, { width: 4.6, height: 0.2, depth: 3.2 }, scene);
-        sh.position.set(x, 0.6, -1.2);
+        sh.position.set(x, 0.6, 0.9);
         sh.material = mat('srtShelfM' + i, hex, '#f0e0c0', 48);
         sh.isPickable = false;
         sh.parent = sortG;
         // 이름표를 뒤판에 고정 (빌보드 아님 — 돌려 봐도 판에 붙어 있다)
         const board = B().MeshBuilder.CreateBox('srtBoard' + i, { width: 4.6, height: 1.2, depth: 0.16 }, scene);
-        board.position.set(x, 1.3, -2.85);
+        board.position.set(x, 1.3, 2.62);
         board.material = mat('srtBoardM' + i, hex, '#f0e0c0', 48);
         board.isPickable = false;
         board.parent = sortG;
         const face = B().MeshBuilder.CreatePlane('srtBoardL' + i, { width: 4.3, height: 1.0 }, scene);
-        face.position.set(x, 1.3, -2.94);
+        face.position.set(x, 1.3, 2.53);
         const t2 = new (B().DynamicTexture)('srtBoardLT' + i, { width: 560, height: 130 }, scene, true);
         const c2 = t2.getContext();
         c2.clearRect(0, 0, 560, 130);
@@ -1190,8 +1300,8 @@ const DeviceScene = (() => {
     };
     const mkGroup = (key, x, txt) => {
       const g = new (B().TransformNode)('srt_' + key, scene);
-      g.position.set(x, 0, 2.4);
-      g._home = new (B().Vector3)(x, 0, 2.4);
+      g.position.set(x, 0, -2.6);
+      g._home = new (B().Vector3)(x, 0, -2.6);
       g.parent = sortG;
       const l = label('srtL_' + key, txt, 2.2, 0.5, 24);
       l.position.y = 1.7;
@@ -1319,10 +1429,13 @@ const DeviceScene = (() => {
     state._usedAed = false; state._usedFlash = false; state._humidMoved = false;
     if (repairBuilt) {
       ['aed', 'flash', 'humid'].forEach((k) => setRepairVisual(k, false));
-      const wfix = scene.getMeshByName('tsW11');
-      if (wfix) wfix.setEnabled(false);
-      if (touchG && touchG._fixLbl) { touchG._fixLbl.setEnabled(true); touchG._fixBall.setEnabled(true); }
+      setTouchAsm(0);
+      const slotT = scene.getMeshByName('rpSlot_touch');
+      if (slotT) { slotT.setEnabled(true); if (slotT._lbl) slotT._lbl.setEnabled(true); }
+      const shelfT = scene.getTransformNodeByName('rpShelf_touch');
+      if (shelfT) shelfT.setEnabled(true);
     }
+    dragRp = null;
     dragSort = null;
     if (touchTex) drawTouchTex();
     layout();

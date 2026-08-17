@@ -102,11 +102,28 @@ const CircuitScene = (() => {
     buildWires();
     buildPlaceholders();
 
-    // 전원 장치 다이얼 클릭 → 전압 순환
+    // 화면 속 부품 직접 조작 — 다이얼(전압), 칼날 스위치(A/열림/B), LED(방향)
     scene.onPointerObservable.add((info) => {
       if (info.type !== B().PointerEventTypes.POINTERDOWN) return;
       const pk = info.pickInfo;
-      if (pk && pk.hit && pk.pickedMesh && pk.pickedMesh.name === 'ckDial') cycleVolt();
+      if (!pk || !pk.hit || !pk.pickedMesh) return;
+      const n = pk.pickedMesh.name;
+      if (n === 'ckDial') { cycleVolt(); return; }
+      if (!sim || !allPlaced()) return;
+      if (n.indexOf('ckSw') === 0) {
+        // 클릭한 쪽으로 레버를 젖힌다 — 같은 쪽을 다시 클릭하면 떼어져 «열림»
+        const px = pk.pickedPoint ? pk.pickedPoint.x : 0;
+        const side = px < -0.2 ? 'chg' : px > 0.2 ? 'dis' : 'open';
+        state.sw = (side === 'open' || state.sw === side) ? 'open' : side;
+        layout();
+        Lab.refresh();
+        return;
+      }
+      if (n.indexOf('ckLed') === 0) {
+        state.ledDir = -state.ledDir;
+        layoutLed();
+        Lab.refresh();
+      }
     });
 
     // 교과서 그림 — 시뮬레이션 쪽을 바라보도록 안쪽으로 기울인다
@@ -178,20 +195,29 @@ const CircuitScene = (() => {
     body.position.set(-3.5, 1.0, 1.2);
     body.material = mat('ckCellM', '#39434f', '#8898ac', 96);
     body.parent = batteryG;
-    // 위쪽 출력 단자 2개 + 극성 기호
-    [[0.28, '#d0453a'], [-0.28, '#8a93a6']].forEach(([dz, hex], i) => {
-      const t2 = B().MeshBuilder.CreateCylinder('ckCellT' + i, { height: 0.16, diameter: 0.24 }, scene);
-      t2.position.set(-3.5, 1.64, 1.2 + dz);
-      t2.material = mat('ckCellTM' + i, hex, '#ffe8a0', 96);
+    // 앞면 출력 단자 2개 (+ 오른쪽 · − 왼쪽) — 도선이 앞면에서 나온다
+    [[0.33, '#d0453a', 'P'], [-0.33, '#8a93a6', 'N']].forEach(([dx, hex, nm]) => {
+      const t2 = B().MeshBuilder.CreateCylinder('ckTerm' + nm, { height: 0.34, diameter: 0.2 }, scene);
+      t2.rotation.x = Math.PI / 2;
+      t2.position.set(-3.5 + dx, 0.62, 0.16);
+      t2.material = mat('ckTermM' + nm, hex, '#ffe8a0', 96);
       t2.parent = batteryG;
     });
-    signLabel('ckBattP', '+', '#d0453a', -3.5, 2.0, 1.48, 0.4, batteryG);
-    signLabel('ckBattN', '−', '#2f6ad0', -3.5, 2.0, 0.92, 0.4, batteryG);
-    // 앞면(카메라 쪽) 패널 — 이름·전압 표시창·다이얼 눈금
-    const face = B().MeshBuilder.CreatePlane('ckPsuFace', { width: 1.06, height: 1.06 }, scene);
-    face.position.set(-3.5, 1.0, 1.2 - 0.96);
+    signLabel('ckBattP', '+', '#d0453a', -3.17, 1.02, 0.0, 0.34, batteryG);
+    signLabel('ckBattN', '−', '#2f6ad0', -3.83, 1.02, 0.0, 0.34, batteryG);
+    // 단자 끝에서 바닥 도선으로 내려가는 짧은 연결선
+    [[-3.17, '#c0392b', 'P'], [-3.83, '#3c4756', 'N']].forEach(([x, hex, nm]) => {
+      const r2 = B().MeshBuilder.CreateCylinder('ckTermW' + nm, { height: 0.6, diameter: 0.08 }, scene);
+      r2.position.set(x, 0.32, 0.05);
+      r2.material = mat('ckTermWM' + nm, hex, '#f0a08a', 96);
+      r2.isPickable = false;
+      r2.parent = batteryG;
+    });
+    // 앞면(카메라 쪽) 위쪽 패널 — 이름·전압 표시창 (아래쪽은 다이얼·단자 자리)
+    const face = B().MeshBuilder.CreatePlane('ckPsuFace', { width: 1.06, height: 0.66 }, scene);
+    face.position.set(-3.5, 1.22, 1.2 - 0.96);
     face.isPickable = false;
-    const t = new (B().DynamicTexture)('ckPsuFaceT', { width: 212, height: 212 }, scene, true);
+    const t = new (B().DynamicTexture)('ckPsuFaceT', { width: 212, height: 132 }, scene, true);
     const m = new (B().StandardMaterial)('ckPsuFaceM', scene);
     m.diffuseTexture = t; m.emissiveTexture = t;
     m.emissiveColor = new (B().Color3)(0.95, 0.95, 0.95);
@@ -199,9 +225,9 @@ const CircuitScene = (() => {
     face.material = m;
     face.parent = batteryG;
     batteryG._lblTex = t;
-    // 다이얼 손잡이 — 클릭하면 3 → 6 → 9V 순환
+    // 다이얼 손잡이 — 클릭하면 3 → 6 → 9V 순환 (앞면 가운데)
     const dialP = new (B().TransformNode)('ckDialP', scene);
-    dialP.position.set(-3.5, 0.72, 1.2 - 1.0);
+    dialP.position.set(-3.5, 0.66, 1.2 - 1.0);
     dialP.parent = batteryG;
     const dial = B().MeshBuilder.CreateCylinder('ckDial', { height: 0.14, diameter: 0.42 }, scene);
     dial.rotation.x = Math.PI / 2;
@@ -222,18 +248,15 @@ const CircuitScene = (() => {
     const t = batteryG._lblTex;
     const c = t.getContext();
     // 본체 색 배경 + 이름
-    c.fillStyle = '#39434f'; c.fillRect(0, 0, 212, 212);
+    c.fillStyle = '#39434f'; c.fillRect(0, 0, 212, 132);
     c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillStyle = '#c9d4e2'; c.font = 'bold 24px "Noto Sans KR", sans-serif';
     c.fillText('전원 장치', 106, 24);
     // 전압 표시창
-    c.fillStyle = '#101820'; c.fillRect(30, 44, 152, 62);
-    c.strokeStyle = '#5a6a80'; c.lineWidth = 3; c.strokeRect(30, 44, 152, 62);
-    c.fillStyle = '#5df08a'; c.font = 'bold 46px sans-serif';
-    c.fillText(`${state.volt.toFixed(0)} V`, 106, 76);
-    // 다이얼 눈금 (다이얼 3D 손잡이가 이 위에 겹친다)
-    c.fillStyle = '#c9d4e2'; c.font = 'bold 22px sans-serif';
-    c.fillText('3', 42, 152); c.fillText('6', 106, 136); c.fillText('9', 170, 152);
+    c.fillStyle = '#101820'; c.fillRect(30, 46, 152, 70);
+    c.strokeStyle = '#5a6a80'; c.lineWidth = 3; c.strokeRect(30, 46, 152, 70);
+    c.fillStyle = '#5df08a'; c.font = 'bold 48px sans-serif';
+    c.fillText(`${state.volt.toFixed(0)} V`, 106, 82);
     t.update();
     if (batteryG._dial) batteryG._dial.rotation.z = DIAL_ANG[state.volt] || 0;
   }
@@ -376,13 +399,12 @@ const CircuitScene = (() => {
   }
 
   function drawCapLabel() {
-    const g = CAP_GEOM[state.cap];
     const c = capLblTex.getContext();
     c.clearRect(0, 0, 400, 64);
     c.fillStyle = '#3c4756';
     c.font = 'bold 32px "Noto Sans KR", sans-serif';
     c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(`${state.cap} μF · 유전체: ${g.name}`, 200, 34);
+    c.fillText(`${state.cap} μF`, 200, 34);
     capLblTex.update();
   }
 
@@ -600,11 +622,11 @@ const CircuitScene = (() => {
   /* ── 도선 ──
      스위치의 접점 사이(A↔공통, 공통↔B)는 레버가 잇는 구간이므로 도선을 두지 않는다. */
   const PATH_CHG = [
-    [-3.5, 2.35], [-3.5, 3.5], [-0.85, 3.5],
+    [-3.17, 0.05], [-2.6, 0.05], [-2.6, 3.5], [-0.85, 3.5],
     [0, 2.6],
     [0, 1.95], [0, -0.25],
     [0, -0.85],
-    [0, -2.4], [-3.5, -2.4], [-3.5, 0.05],
+    [0, -2.4], [-3.83, -2.4], [-3.83, 0.05],
   ];
   const PATH_DIS = [
     [0, -0.25], [0, 1.95],
@@ -613,7 +635,7 @@ const CircuitScene = (() => {
     [3.5, -0.024],               // 소켓 − 구멍부터
     [3.5, -2.4], [0, -2.4], [0, -0.85],
   ];
-  const SKIP_CHG = [2, 5];       // 2: A접점→공통(레버 자리), 5: 판 사이
+  const SKIP_CHG = [3, 6];       // 3: A접점→공통(레버 자리), 6: 판 사이
   const SKIP_DIS = [2, 5];       // 2: 공통→B접점(레버 자리), 5: LED 내부(소켓 구멍 사이)
 
   function seg(a, b, parent, name) {
@@ -650,8 +672,8 @@ const CircuitScene = (() => {
   /** 판 간격이 바뀌면 판에 붙는 도선 끝점도 함께 이동 */
   function updateCapWires() {
     const g = CAP_GEOM[state.cap];
-    PATH_CHG[5] = [0, CAPZ + g.gap / 2];
-    PATH_CHG[6] = [0, CAPZ - g.gap / 2];
+    PATH_CHG[6] = [0, CAPZ + g.gap / 2];
+    PATH_CHG[7] = [0, CAPZ - g.gap / 2];
     PATH_DIS[0] = [0, CAPZ + g.gap / 2];
     PATH_DIS[9] = [0, CAPZ - g.gap / 2];
     if (!wireSegs.length) return;
@@ -664,7 +686,7 @@ const CircuitScene = (() => {
       s.mesh.scaling.y = len / (s.mesh._len0 || (s.mesh._len0 = len));
       s.mesh.position.set((a[0] + b[0]) / 2, WY, (a[1] + b[1]) / 2);
     };
-    fix('c', 4); fix('c', 6);
+    fix('c', 5); fix('c', 7);
     fix('d', 0); fix('d', 8);
   }
 
@@ -672,7 +694,7 @@ const CircuitScene = (() => {
     const segs = [];
     let total = 0;
     for (let i = 0; i < path.length - 1; i++) {
-      if (skips && skips.includes(i) && i === 5) continue;   // 판 사이만 건너뛴다 (레버 구간은 레버 위로 지나감)
+      if (skips && i === skips[1]) continue;   // 판 사이만 건너뛴다 (레버 구간은 레버 위로 지나감)
       const L = Math.hypot(path[i + 1][0] - path[i][0], path[i + 1][1] - path[i][1]);
       segs.push([i, L]); total += L;
     }
@@ -890,7 +912,7 @@ const CircuitScene = (() => {
   }
 
   /* ══ 컨트롤 ═════════════════════════════════ */
-  const guide = '스위치를 A(충전)로 — 전하가 판에 쌓입니다. 열림에서 전하가 보존되는지 보고, B(방전)로 LED 를 켜 보세요. 거꾸로 끼우면?';
+  const guide = '화면의 칼날 스위치를 클릭해 A(충전) — 전하가 판에 쌓입니다. 다시 클릭해 열림(보존), B(방전)로 LED 를 켜 보세요. LED 를 클릭하면 거꾸로!';
   const prepGuide = '도구 아이콘을 클릭하면 부품이 제자리로 들어갑니다. 끌어서 점선 자리에 놓아도 됩니다.';
 
   function controlsHTML() {
@@ -901,12 +923,12 @@ const CircuitScene = (() => {
       ${LabUI.opts('축전기 용량', 'cap', [
         { v: 470, t: '470 μF' }, { v: 1000, t: '1000 μF' }, { v: 2200, t: '2200 μF' },
       ], state.cap, 1)}
-      ${LabUI.opts('칼날 스위치', 'sw', [
-        { v: 'chg', t: 'A — 충전' }, { v: 'open', t: '열림' }, { v: 'dis', t: 'B — 방전' },
-      ], state.sw, 1)}
-      ${LabUI.opts('LED 방향', 'ledDir', [
-        { v: 1, t: '정방향' }, { v: -1, t: '거꾸로 끼움' },
-      ], state.ledDir, 1)}
+      <div class="control">
+        <div class="clabel">조작 안내</div>
+        <div class="cbody" style="display:flex;align-items:center;font-size:12.5px;color:#41566f;line-height:1.5">
+          화면의 <b>&nbsp;칼날 스위치&nbsp;</b>를 클릭 — A(충전)·B(방전), 같은 쪽을 다시 클릭하면 열림 &nbsp;·&nbsp; <b>&nbsp;LED&nbsp;</b>를 클릭하면 거꾸로 끼움
+        </div>
+      </div>
       ${LabUI.opts('재생 속도', 'slow', [
         { v: 1, t: '보통' }, { v: 0.25, t: '슬로 모션 ×¼' },
       ], state.slow, 1)}
@@ -919,15 +941,6 @@ const CircuitScene = (() => {
   function bindControls(root, onChange) {
     LabUI.bindOpts(root, 'volt', state, 'volt', () => { drawBattLabel(); drawPlateCharges(); onChange(); });
     LabUI.bindOpts(root, 'cap', state, 'cap', () => { layoutCap(); onChange(); });
-    // 스위치: 이미 선택된 A/B 를 한 번 더 누르면 레버가 떨어져 열림이 된다
-    root.querySelectorAll('[data-sw]').forEach((b) => b.addEventListener('click', () => {
-      const v = b.getAttribute('data-sw');
-      state.sw = (state.sw === v && v !== 'open') ? 'open' : v;
-      root.querySelectorAll('[data-sw]').forEach((o) =>
-        o.classList.toggle('on', o.getAttribute('data-sw') === state.sw));
-      layout(); onChange();
-    }));
-    LabUI.bindOpts(root, 'ledDir', state, 'ledDir', () => { layoutLed(); onChange(); });
     LabUI.bindOpts(root, 'slow', state, 'slow', onChange);
     root.querySelector('#resetBtn').addEventListener('click', () => {
       reset();

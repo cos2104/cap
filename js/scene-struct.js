@@ -16,8 +16,8 @@ const StructScene = (() => {
   let buildG, bPlateA, bPlateB, bFaceA, bFaceB, bTexA, bTexB, bArrows = [], dielec, rolledCyl;
   let batG;              // 조립 모드의 전원 회로 (전지·집게·도선)
   // 전하 유입·유출 경로 (buildG 로컬): 전지 → 집게. 판까지의 마지막 구간은 스폰 시점에 붙인다
-  const BW_A = [[-3.2, -0.95, -0.18], [-3.2, -0.3, -0.55], [-2.05, -0.3, -0.8]];   // + 쪽 (앞판)
-  const BW_B = [[-3.2, -0.95, 0.18], [-3.2, -0.3, 0.55], [-2.05, -0.3, 0.8]];      // − 쪽 (뒷판)
+  const BW_A = [[-4.5, -0.95, -0.18], [-4.5, -0.3, -0.55], [-2.05, -0.3, -0.8]];   // + 쪽 (앞판)
+  const BW_B = [[-4.5, -0.95, 0.18], [-4.5, -0.3, 0.55], [-2.05, -0.3, 0.8]];      // − 쪽 (뒷판)
   let placed = {};
 
   const state = {
@@ -363,17 +363,17 @@ const StructScene = (() => {
     batG = new (B().TransformNode)('stBat', scene);
     batG.parent = buildG;
     const bat = B().MeshBuilder.CreateBox('stBatBox', { width: 0.75, height: 0.95, depth: 0.6 }, scene);
-    bat.position.set(-3.2, -1.5, 0);
+    bat.position.set(-4.5, -1.5, 0);
     bat.material = mat('stBatBoxM', '#2a3542', '#8898ac', 96);
     bat.parent = batG;
     const bl = label('stBatL', '전원 (9 V)', 1.6, 0.4, 26, '#3c4756');
-    bl.position.set(-3.2, -0.55, 0);
+    bl.position.set(-4.5, -0.55, 0);
     bl.parent = batG;
     const sp2 = label('stBatP', '+', 0.3, 0.3, 30, '#ff8a7a');
-    sp2.position.set(-3.38, -0.9, -0.2);
+    sp2.position.set(-4.68, -0.9, -0.2);
     sp2.parent = batG;
     const sn2 = label('stBatN', '−', 0.3, 0.3, 30, '#7ab0ff');
-    sn2.position.set(-3.02, -0.9, 0.2);
+    sn2.position.set(-4.32, -0.9, 0.2);
     sn2.parent = batG;
     // 도선 + 판을 무는 집게 — 판의 크기·간격이 변해도 끝점이 판 가장자리를 따라간다
     const mkSegs = (nm, hex, count) => Array.from({ length: count }, (_, i) => {
@@ -405,11 +405,11 @@ const StructScene = (() => {
     buildG._rolledLbl = rl;
     // 전하량 게이지 — 넓은 틀 안에 채워지는 막대 (최대 800 눈금)
     const gBase = B().MeshBuilder.CreateBox('stQBase', { width: 1.6, height: 0.12, depth: 1.0 }, scene);
-    gBase.position.set(3.3, -1.85, 0);
+    gBase.position.set(4.35, -1.85, 0);
     gBase.material = mat('stQBaseM', '#39424f', '#6a7a88', 48);
     gBase.parent = buildG;
     const gFrame = B().MeshBuilder.CreateBox('stQFrame', { width: 1.3, height: 2.3, depth: 0.7 }, scene);
-    gFrame.position.set(3.3, -0.65, 0);
+    gFrame.position.set(4.35, -0.65, 0);
     const gfm = mat('stQFrameM', '#8a97a5', '#c8d4e0', 64);
     gfm.alpha = 0.18;
     gFrame.material = gfm;
@@ -559,10 +559,10 @@ const StructScene = (() => {
     const q = chargeRel();
     const h = Math.max(0.08, Math.min(1, q / 800) * 2.2);
     buildG._qBar.scaling.y = h;
-    buildG._qBar.position.set(3.3, -1.79 + h / 2, 0);
+    buildG._qBar.position.set(4.35, -1.79 + h / 2, 0);
     buildG._qBar.material.emissiveColor = B().Color3.FromHexString(
       state.round === 4 ? '#5af0a0' : q >= 380 ? '#f0d03a' : '#f0a83a');
-    buildG._qLbl.position.set(3.3, 0.9, 0);
+    buildG._qLbl.position.set(4.35, 0.9, 0);
     drawQLabel();
     // 전원 회로는 말리는 동안 잠시 감춘다
     batG.setEnabled(flatOn && rp < 0.5);
