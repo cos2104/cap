@@ -816,14 +816,7 @@ const DeviceScene = (() => {
       b.position.y = 0.46;
       const m2 = mat(nm + 'bM', hex);
       if (kind !== 'tdisp') m2.alpha = 0.6;
-      b.material = m2;
-      if (kind === 'telec') {
-        const b2 = add(B().MeshBuilder.CreateBox(nm + 'b2', { width: 1.35, height: 0.85, depth: 0.07 }, scene));
-        b2.position.set(0, 0.46, 0.16);
-        const m3 = mat(nm + 'b2M', hex);
-        m3.alpha = 0.6;
-        b2.material = m3;
-      }
+      b.material = m2;   // 한 번에 한 겹씩 끼우므로 부품도 «한 장»이다
     } else if (kind === 'metal' || kind === 'glass' || kind === 'poly') {
       const b = add(B().MeshBuilder.CreateBox(nm + 'b', { width: 0.55, height: 0.8, depth: 0.5 }, scene));
       b.position.y = 0.42;
