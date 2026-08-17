@@ -47,7 +47,13 @@ const Lab = (() => {
 
       <main class="stage" id="stage">
         <canvas id="renderCanvas"></canvas>
-        <aside class="readout" id="readout"></aside>
+        <aside class="readout" id="readout">
+          <div class="readout-head">
+            <span>측정값</span>
+            <button class="mini-toggle" id="readoutToggle">－</button>
+          </div>
+          <div class="readout-body" id="readoutBody"></div>
+        </aside>
 
         <section class="graph-panel" id="graphPanel">
           <div class="graph-head">
@@ -134,7 +140,8 @@ const Lab = (() => {
     bindShell();
     // 좁은 화면에서는 무대를 가리지 않게 부가 패널을 접힌 상태로 시작
     if (matchMedia('(max-width: 820px)').matches) {
-      [['graphPanel', 'graphToggle'], ['recordPanel', 'recToggle'], ['stepsPanel', 'stepToggle']]
+      [['graphPanel', 'graphToggle'], ['recordPanel', 'recToggle'],
+       ['stepsPanel', 'stepToggle'], ['readout', 'readoutToggle']]
         .forEach(([p, t]) => { $('#' + p).classList.add('collapsed'); $('#' + t).textContent = '＋'; });
     }
     openExperiment(cfg.experiments[0].id);
@@ -351,7 +358,7 @@ const Lab = (() => {
 
   /** 애니메이션 중 — 표시만 다시 그린다 */
   function refreshLive() {
-    $('#readout').innerHTML = current.readoutHTML();
+    $('#readoutBody').innerHTML = current.readoutHTML();
     current.drawGraph(gctx, GW, GH);
     $('#graphFoot').innerHTML = current.graphFootHTML();
   }
@@ -454,6 +461,11 @@ const Lab = (() => {
       refresh();
     });
 
+    $('#readoutToggle').addEventListener('click', () => {
+      const p = $('#readout');
+      p.classList.toggle('collapsed');
+      $('#readoutToggle').textContent = p.classList.contains('collapsed') ? '＋' : '－';
+    });
     $('#graphToggle').addEventListener('click', () => {
       const p = $('#graphPanel');
       p.classList.toggle('collapsed');

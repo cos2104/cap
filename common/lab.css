@@ -122,6 +122,15 @@ i { font-family: 'Times New Roman', serif; font-size: 1.12em; }
   min-width: 218px; max-width: 300px;
   font-size: 13px; line-height: 1.85;
 }
+.readout-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-size: 12px; font-weight: 700; color: var(--ink-soft);
+  padding-bottom: 4px; margin-bottom: 4px;
+  border-bottom: 1px dashed var(--line);
+}
+.readout.collapsed .readout-body { display: none; }
+.readout.collapsed { min-width: 0; padding: 7px 11px; }
+.readout.collapsed .readout-head { padding-bottom: 0; margin-bottom: 0; border-bottom: 0; }
 .readout .row { display: flex; justify-content: space-between; gap: 16px; }
 .readout .big { color: var(--key); font-size: 15px; font-weight: 900; }
 .readout .sec {
@@ -458,16 +467,19 @@ i { font-family: 'Times New Roman', serif; font-size: 1.12em; }
   .tray-item svg { width: 36px; height: 36px; }
   .tray-auto { flex: none; margin-left: 8px; padding: 8px 10px; font-size: 12px; }
   .control-set { gap: 8px; }
-  .control > .clabel { min-width: 62px; font-size: 11.5px; padding: 0 8px; }
-  .control > .cbody { padding: 6px 8px; }
-  .opt { min-width: 62px; padding: 5px 9px; font-size: 11.5px; }
-  .slider-row { min-width: 168px; }
-  .slider-row output { min-width: 62px; font-size: 12px; }
-  .power { min-width: 72px; font-size: 13.5px; padding: 0 10px; }
+  .control { max-width: 100%; }
+  .control > .clabel { min-width: 52px; font-size: 11px; padding: 0 7px; }
+  .control > .cbody { padding: 5px 7px; min-width: 0; }
+  /* 선택 버튼 묶음: 가로로 뻗지 않고 화면 폭 안에서 줄바꿈 */
+  .opt-grid, .opt-grid.one-row { display: flex; flex-wrap: wrap; gap: 4px; }
+  .opt { min-width: 0; padding: 4px 9px; font-size: 11px; }
+  .slider-row { min-width: 0; width: min(230px, calc(100vw - 120px)); }
+  .slider-row output { min-width: 54px; font-size: 11.5px; }
+  .power { min-width: 0; font-size: 12px; padding: 6px 8px; white-space: normal; line-height: 1.3; }
 
   .readout {
     top: 8px; left: 8px;
-    min-width: 0; max-width: min(60vw, 250px);
+    min-width: 0; max-width: min(55vw, 230px);
     padding: 8px 10px;
     font-size: 11.5px; line-height: 1.7;
   }
@@ -477,6 +489,13 @@ i { font-family: 'Times New Roman', serif; font-size: 1.12em; }
   .record-panel { bottom: 8px; right: 8px; width: min(322px, calc(100vw - 16px)); max-height: 42%; }
   .steps-panel { bottom: 8px; left: 8px; width: min(372px, calc(100vw - 16px)); }
   .steps-body { max-height: 118px; }
+  /* 접힌 패널은 머리줄만 남겨 폭을 줄인다 — 왼쪽 측정값 창과 겹치지 않게 */
+  .graph-panel.collapsed, .record-panel.collapsed, .steps-panel.collapsed { width: auto; max-width: 38vw; }
+  .graph-head span:first-child, .record-head > span:first-child, .steps-head > span:first-child {
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0;
+  }
+  .sidebar { overflow-x: auto; }
+  .sidebar button { min-width: 42px; }
 
   .drag-ghost { width: 72px; height: 72px; margin: -36px 0 0 -36px; }
   .drag-ghost svg { width: 48px; height: 48px; }
